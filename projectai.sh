@@ -18,6 +18,30 @@ if [ "$#" -lt 1 ]; then
     exit 1
 fi
 
+# Handle help flag
+if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
+    echo "ProjectAI - AI-assisted project initialization with Agent OS"
+    echo ""
+    echo "Usage: projectai <primary_project_type> [additional_project_types...]"
+    echo ""
+    echo "Parameters:"
+    echo "  primary_project_type     Main technology/framework (required)"
+    echo "  additional_project_types Supporting technologies (optional)"
+    echo ""
+    echo "Examples:"
+    echo "  projectai drupal"
+    echo "  projectai drupal php mysql css javascript lando"
+    echo "  projectai react typescript tailwind"
+    echo "  projectai python fastapi postgresql"
+    echo ""
+    echo "Prerequisites:"
+    echo "  - Agent OS must be installed first"
+    echo "  - Run: curl -sSL https://raw.githubusercontent.com/jdelon02/agent-os/main/setup.sh | bash"
+    echo ""
+    echo "For more information: https://github.com/jdelon02/projectai"
+    exit 0
+fi
+
 # Set variables
 PRIMARY_PROJECT_TYPE="$1"
 shift # Remove first argument
