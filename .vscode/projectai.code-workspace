@@ -1,0 +1,50 @@
+{
+    "folders": [
+        {
+            "path": "..",
+            "name": "projectai"
+        }
+    ],
+    "settings": {
+        "github.copilot.enable": {
+            "*": true,
+            "plaintext": false,
+            "markdown": true,
+            "python": true
+        },
+        "github.copilot.advanced": {
+            "inlineSuggestCount": 3
+        },
+        "github.copilot.chat.codeGeneration.useInstructionFiles": true,
+        "github.copilot.chat.codeGeneration.instructions": [
+            {
+                "file": "${workspaceFolder}/.github/instructions/main.instructions.md"
+            }
+        ],
+        "github.copilot.chat.testGeneration.instructions": [
+            {
+                "text": "Use PHPUnit and Drupal 10 testing conventions. For PHP, follow Drupal's Simpletest and KernelTestBase standards. For JavaScript, use appropriate Drupal JS testing practices."
+            }
+        ],
+        "github.copilot.chat.reviewSelection.instructions": [
+            {
+                "text": "Ensure code follows Drupal coding standards, best practices for Drupal 10, and proper integration with CiviCRM where relevant. Check for security, performance, and maintainability."
+            }
+        ],
+        "files.watcherExclude": {
+            "**/.git/objects/**": true,
+            "**/.git/subtree-cache/**": true,
+            "**/node_modules/**": true,
+            "**/vendor/**": true,
+            "**/dist/**": true,
+            "**/.DS_Store": true
+        },
+        "editor.experimentalGpuAcceleration": "off"
+    },
+    "extensions": {
+        "recommendations": [
+            "github.copilot",
+            "github.copilot-chat"
+        ]
+    }
+}

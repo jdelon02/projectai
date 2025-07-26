@@ -1,0 +1,54 @@
+{
+    "folders": [
+        {
+            "path": "..",
+            "name": "<DIRECTORY_NAME>"
+        }
+    ],
+    "settings": {
+        "github.copilot.enable": {
+            "*": true,
+            "plaintext": false,
+            "markdown": true,
+            "python": true,
+            "javascript": true,
+            "typescript": true
+        },
+        "github.copilot.advanced": {
+            "inlineSuggestCount": 3
+        },
+        "github.copilot.chat.codeGeneration.useInstructionFiles": true,
+        "github.copilot.chat.codeGeneration.instructions": [
+            {
+                "file": "${workspaceFolder}/.github/instructions/main.instructions.md"
+            }
+        ],
+        "github.copilot.chat.testGeneration.instructions": [
+            {
+                "text": "Use testing conventions appropriate for <PROJECTTYPE> project with additional technologies: <ADDITIONAL_TYPES>. Follow Agent OS standards from ~/.agent-os/<PROJECTTYPE>/ for primary testing approaches."
+            }
+        ],
+        "github.copilot.chat.reviewSelection.instructions": [
+            {
+                "text": "Ensure code follows <PROJECTTYPE> coding standards and best practices. Review against Agent OS standards in ~/.agent-os/<PROJECTTYPE>/ and supplementary standards for: <ADDITIONAL_TYPES>. Check for security, performance, and maintainability."
+            }
+        ],
+        "files.watcherExclude": {
+            "**/.git/objects/**": true,
+            "**/.git/subtree-cache/**": true,
+            "**/node_modules/**": true,
+            "**/vendor/**": true,
+            "**/dist/**": true,
+            "**/build/**": true,
+            "**/.DS_Store": true,
+            "**/tmp/**": true,
+            "**/cache/**": true
+        }
+    },
+    "extensions": {
+        "recommendations": [
+            "github.copilot",
+            "github.copilot-chat"
+        ]
+    }
+}
