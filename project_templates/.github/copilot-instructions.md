@@ -10,7 +10,7 @@
 
 This is a **<PROJECTTYPE>** project with additional technologies (<ADDITIONAL_TYPES>) using Agent OS structured development workflows.
 
-For complete instructions, see: [Main Instructions](.github/instructions/main.instructions.md)
+For complete instructions, see: [Main Instructions](instructions/main.instructions.md)
 
 ## Quick Reference
 

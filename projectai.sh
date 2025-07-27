@@ -194,31 +194,242 @@ create_instruction_file() {
         project_types_display="$PRIMARY_PROJECT_TYPE (+ ${ADDITIONAL_PROJECT_TYPES[*]})"
     fi
     
-    # Source the appropriate IDE-specific handler
-    local ide_handler_file="$SCRIPT_DIR/ide_specific/${IDE_TYPE}.sh"
-    
-    if [ ! -f "$ide_handler_file" ]; then
-        handle_error "IDE handler file not found: $ide_handler_file"
-        return 1
-    fi
-    
-    # Source the IDE-specific handler
-    source "$ide_handler_file"
-    
-    # Call the appropriate function based on IDE type
     case $IDE_TYPE in
         "claude")
-            create_claude_instruction_file "$project_types_display"
+            local instruction_file="$FULL_PATH/CLAUDE.md"
+            cat > "$instruction_file" << EOF
+# CLAUDE.md
+
+> Agent OS Project Instructions
+> Primary Project Type: $PRIMARY_PROJECT_TYPE
+> Additional Types: ${ADDITIONAL_PROJECT_TYPES[*]}
+> Directory: $DIRECTORY
+> Generated: $(date +"%Y-%m-%d")
+
+## Purpose
+
+This file directs Claude Code to use your Agent OS standards for this multi-type project ($project_types_display). These instructions reference your global Agent OS installation and provide project-specific context.
+
+## Primary Project Standards ($PRIMARY_PROJECT_TYPE)
+
+### Development Standards
+- **Tech Stack Defaults:** @~/.agent-os/$PRIMARY_PROJECT_TYPE/tech-stack.md
+- **Code Style Preferences:** @~/.agent-os/$PRIMARY_PROJECT_TYPE/code-style.md
+- **Best Practices Philosophy:** @~/.agent-os/$PRIMARY_PROJECT_TYPE/best-practices.md
+- **Main Instructions:** @~/.agent-os/$PRIMARY_PROJECT_TYPE/main.instructions.md
+
+## Additional Technology Standards
+
+EOF
+            
+            # Add references for additional project types
+            for project_type in "${ADDITIONAL_PROJECT_TYPES[@]}"; do
+                cat >> "$instruction_file" << EOF
+### $project_type Standards
+- **Tech Stack:** @~/.agent-os/$project_type/tech-stack.md
+- **Code Style:** @~/.agent-os/$project_type/code-style.md
+- **Best Practices:** @~/.agent-os/$project_type/best-practices.md
+- **Instructions:** @~/.agent-os/$project_type/main.instructions.md
+
+EOF
+            done
+            
+            cat >> "$instruction_file" << EOF
+## Agent OS Instructions
+- **Initialize Products:** @~/.agent-os/instructions/plan-product.md
+- **Plan Features:** @~/.agent-os/instructions/create-spec.md
+- **Execute Tasks:** @~/.agent-os/instructions/execute-tasks.md
+- **Analyze Existing Code:** @~/.agent-os/instructions/analyze-product.md
+
+## Project Context
+
+- **Primary Type:** $PRIMARY_PROJECT_TYPE
+- **Additional Types:** ${ADDITIONAL_PROJECT_TYPES[*]}
+- **Directory Name:** $DIRECTORY
+- **Full Path:** $FULL_PATH
+
+## Using Agent OS Commands
+
+You can invoke Agent OS commands directly:
+- \`/plan-product\` - Start planning this product
+- \`/create-spec\` - Plan a new feature for this project
+- \`/execute-task\` - Build and ship code for this project
+- \`/analyze-product\` - Analyze this existing codebase
+
+## Important Notes
+
+- Primary standards from \`~/.agent-os/$PRIMARY_PROJECT_TYPE/\` take precedence
+- Additional technology standards provide supplementary guidance
+- Project-specific files in this directory override global defaults
+- Update Agent OS standards as you discover new patterns
+
+---
+
+*Using Agent OS for structured AI-assisted development. Learn more at [buildermethods.com/agent-os](https://buildermethods.com/agent-os)*
+EOF
+            echo "    ✓ Created CLAUDE.md instruction file"
             ;;
+            
         "vscode")
-            create_vscode_instruction_file "$project_types_display"
+            # Create .github/instructions directory
+            local instructions_dir="$FULL_PATH/.github/instructions"
+            mkdir -p "$instructions_dir"
+            local instruction_file="$instructions_dir/main.instructions.md"
+            cat > "$instruction_file" << EOF
+# GitHub Copilot Instructions
+
+> Agent OS Project Instructions
+> Primary Project Type: $PRIMARY_PROJECT_TYPE
+> Additional Types: ${ADDITIONAL_PROJECT_TYPES[*]}
+> Directory: $DIRECTORY
+> Generated: $(date +"%Y-%m-%d")
+
+## Project Context
+
+This is a **$PRIMARY_PROJECT_TYPE** project with additional technologies (${ADDITIONAL_PROJECT_TYPES[*]}) using Agent OS structured development workflows.
+
+## Primary Standards Reference ($PRIMARY_PROJECT_TYPE)
+- Main Instructions: \`~/.agent-os/$PRIMARY_PROJECT_TYPE/main.instructions.md\`
+- Tech Stack Standards: \`~/.agent-os/$PRIMARY_PROJECT_TYPE/tech-stack.md\`
+- Code Style Guide: \`~/.agent-os/$PRIMARY_PROJECT_TYPE/code-style.md\`
+- Best Practices: \`~/.agent-os/$PRIMARY_PROJECT_TYPE/best-practices.md\`
+
+## Additional Technology Standards
+
+EOF
+            
+            # Add references for additional project types
+            for project_type in "${ADDITIONAL_PROJECT_TYPES[@]}"; do
+                cat >> "$instruction_file" << EOF
+### $project_type
+- Instructions: \`~/.agent-os/$project_type/main.instructions.md\`
+- Tech Stack: \`~/.agent-os/$project_type/tech-stack.md\`
+- Code Style: \`~/.agent-os/$project_type/code-style.md\`
+- Best Practices: \`~/.agent-os/$project_type/best-practices.md\`
+
+EOF
+            done
+            
+            cat >> "$instruction_file" << EOF
+## Development Guidelines
+
+Please follow the Agent OS methodology:
+
+1. **Plan First**: Always understand the full scope before coding
+2. **Spec-Driven**: Create detailed specifications for complex features
+3. **Standards Compliance**: Follow the $PRIMARY_PROJECT_TYPE standards primarily, with guidance from additional technologies
+4. **Modular Design**: Maintain separation of concerns and clean architecture
+
+## Project Information
+- **Primary Type**: $PRIMARY_PROJECT_TYPE
+- **Additional Types**: ${ADDITIONAL_PROJECT_TYPES[*]}
+- **Name**: $DIRECTORY
+- **Path**: $FULL_PATH
+
+## Agent OS Workflows
+
+When working on this project:
+- Reference \`~/.agent-os/instructions/plan-product.md\` for product planning
+- Use \`~/.agent-os/instructions/create-spec.md\` for feature specification
+- Follow \`~/.agent-os/instructions/execute-tasks.md\` for implementation
+- Apply \`~/.agent-os/instructions/analyze-product.md\` for code analysis
+
+---
+
+*Using Agent OS for structured AI-assisted development with GitHub Copilot*
+EOF
+            echo "    ✓ Created .github/instructions/main.instructions.md file"
+            
+            # Copy and customize copilot-instructions.md template
+            local copilot_file="$FULL_PATH/.github/copilot-instructions.md"
+            local copilot_template="${BASE_URL}/project_templates/.github/copilot-instructions.md"
+            
+            if curl -s --fail -o "$copilot_file" "$copilot_template" 2>/dev/null; then
+                # Create replacement strings for multiple project types
+                local additional_types_str="${ADDITIONAL_PROJECT_TYPES[*]}"
+                local all_types_str="${ALL_PROJECT_TYPES[*]}"
+                
+                if sed -i '' \
+                    -e "s/<PROJECTTYPE>/$PRIMARY_PROJECT_TYPE/g" \
+                    -e "s/<DIRECTORY_NAME>/$DIRECTORY/g" \
+                    -e "s/<ADDITIONAL_TYPES>/$additional_types_str/g" \
+                    -e "s/<ALL_TYPES>/$all_types_str/g" \
+                    -e "s|<FULL_PATH>|$FULL_PATH|g" \
+                    "$copilot_file" 2>/dev/null; then
+                    echo "    ✓ Created .github/copilot-instructions.md for auto-detection"
+                else
+                    echo "    ⚠️  Created copilot-instructions.md but failed to customize placeholders"
+                fi
+            else
+                echo "    ⚠️  Failed to download copilot-instructions.md template, creating basic version"
+                # Fallback to a simple version if template download fails
+                cat > "$copilot_file" << EOF
+# GitHub Copilot Instructions
+
+For complete instructions, see: [Main Instructions](instructions/main.instructions.md)
+
+This is a **$PRIMARY_PROJECT_TYPE** project using Agent OS structured development workflows.
+EOF
+            fi
             ;;
+            
         "cursor")
-            create_cursor_instruction_file "$project_types_display"
-            ;;
-        *)
-            handle_error "Unknown IDE type: $IDE_TYPE"
-            return 1
+            local instruction_file="$FULL_PATH/.cursorrules"
+            cat > "$instruction_file" << EOF
+# Cursor IDE Rules - Agent OS Project
+
+# Primary Project Type: $PRIMARY_PROJECT_TYPE
+# Additional Types: ${ADDITIONAL_PROJECT_TYPES[*]}
+# Directory: $DIRECTORY
+# Generated: $(date +"%Y-%m-%d")
+
+# Agent OS Standards
+You are working on a $PRIMARY_PROJECT_TYPE project with additional technologies (${ADDITIONAL_PROJECT_TYPES[*]}) using Agent OS structured development methodology.
+
+## Primary Reference Files ($PRIMARY_PROJECT_TYPE)
+- Main Instructions: ~/.agent-os/$PRIMARY_PROJECT_TYPE/main.instructions.md
+- Tech Stack Standards: ~/.agent-os/$PRIMARY_PROJECT_TYPE/tech-stack.md
+- Code Style Guide: ~/.agent-os/$PRIMARY_PROJECT_TYPE/code-style.md
+- Best Practices: ~/.agent-os/$PRIMARY_PROJECT_TYPE/best-practices.md
+
+EOF
+            
+            # Add references for additional project types
+            for project_type in "${ADDITIONAL_PROJECT_TYPES[@]}"; do
+                cat >> "$instruction_file" << EOF
+## Additional Standards ($project_type)
+- Instructions: ~/.agent-os/$project_type/main.instructions.md
+- Tech Stack: ~/.agent-os/$project_type/tech-stack.md
+- Code Style: ~/.agent-os/$project_type/code-style.md
+- Best Practices: ~/.agent-os/$project_type/best-practices.md
+
+EOF
+            done
+            
+            cat >> "$instruction_file" << EOF
+## Development Approach
+1. Always reference the Agent OS standards, prioritizing $PRIMARY_PROJECT_TYPE as primary
+2. Apply additional technology standards as supplementary guidance
+3. Follow spec-driven development - plan before implementing
+4. Maintain clean, modular architecture
+5. Document architectural decisions
+6. Follow the established conventions for all referenced technologies
+
+## Project Context
+- Primary Type: $PRIMARY_PROJECT_TYPE
+- Additional Types: ${ADDITIONAL_PROJECT_TYPES[*]}
+- Name: $DIRECTORY
+- Path: $FULL_PATH
+
+## Agent OS Workflow Integration
+- Plan products using ~/.agent-os/instructions/plan-product.md
+- Create specifications with ~/.agent-os/instructions/create-spec.md
+- Execute tasks following ~/.agent-os/instructions/execute-tasks.md
+- Analyze code using ~/.agent-os/instructions/analyze-product.md
+
+Always prioritize code quality, maintainability, and adherence to the established Agent OS standards for this multi-technology project.
+EOF
+            echo "    ✓ Created .cursorrules file with ${#ALL_PROJECT_TYPES[@]} project type(s)"
             ;;
     esac
     
@@ -374,13 +585,23 @@ main() {
     # Execute the copy and replace function for additional templates
     if copy_and_replace; then
         echo "✨ Project initialization complete!"
-        echo "📁 Created IDE-specific instruction file for $IDE_TYPE"
+        if [ "$IDE_TYPE" = "vscode" ]; then
+            echo "📁 Created VS Code instruction files:"
+            echo "   - .github/instructions/main.instructions.md"
+            echo "   - .github/copilot-instructions.md (for auto-detection)"
+        else
+            echo "📁 Created IDE-specific instruction file for $IDE_TYPE"
+        fi
         echo "🎯 Referenced ${#ALL_PROJECT_TYPES[@]} project type(s): ${ALL_PROJECT_TYPES[*]}"
         echo "📂 Template files have been copied and customized."
         return 0
     else
         echo "⚠️  Project initialization completed with some errors."
-        echo "📁 IDE-specific instruction file was created successfully."
+        if [ "$IDE_TYPE" = "vscode" ]; then
+            echo "📁 VS Code instruction files were created successfully."
+        else
+            echo "📁 IDE-specific instruction file was created successfully."
+        fi
         echo "🎯 Referenced ${#ALL_PROJECT_TYPES[@]} project type(s): ${ALL_PROJECT_TYPES[*]}"
         echo "Please check the logs above for template copying details."
         return 1
