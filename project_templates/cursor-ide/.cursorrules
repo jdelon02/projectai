@@ -1,0 +1,39 @@
+# Cursor IDE Rules - Agent OS Project
+
+# Primary Project Type: <PROJECTTYPE>
+# Additional Types: <ADDITIONAL_TYPES>
+# Directory: <DIRECTORY_NAME>
+# Generated: $(date +"%Y-%m-%d")
+
+# Agent OS Standards
+You are working on a <PROJECTTYPE> project with additional technologies (<ADDITIONAL_TYPES>) using Agent OS structured development methodology.
+
+## Primary Reference Files (<PROJECTTYPE>)
+- Main Instructions: ~/.agent-os/<PROJECTTYPE>/main.instructions.md
+- Tech Stack Standards: ~/.agent-os/<PROJECTTYPE>/tech-stack.md
+- Code Style Guide: ~/.agent-os/<PROJECTTYPE>/code-style.md
+- Best Practices: ~/.agent-os/<PROJECTTYPE>/best-practices.md
+
+<ADDITIONAL_SECTIONS>
+
+## Development Approach
+1. Always reference the Agent OS standards, prioritizing <PROJECTTYPE> as primary
+2. Apply additional technology standards as supplementary guidance
+3. Follow spec-driven development - plan before implementing
+4. Maintain clean, modular architecture
+5. Document architectural decisions
+6. Follow the established conventions for all referenced technologies
+
+## Project Context
+- Primary Type: <PROJECTTYPE>
+- Additional Types: <ADDITIONAL_TYPES>
+- Name: <DIRECTORY_NAME>
+- Path: <FULL_PATH>
+
+## Agent OS Workflow Integration
+- Plan products using ~/.agent-os/instructions/plan-product.md
+- Create specifications with ~/.agent-os/instructions/create-spec.md
+- Execute tasks following ~/.agent-os/instructions/execute-tasks.md
+- Analyze code using ~/.agent-os/instructions/analyze-product.md
+
+Always prioritize code quality, maintainability, and adherence to the established Agent OS standards for this multi-technology project.
