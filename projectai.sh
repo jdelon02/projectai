@@ -75,7 +75,8 @@ prompt_ide_selection() {
     echo ""
     
     while true; do
-        read -p "Enter your choice (1-3): " choice
+        echo -n "Enter your choice (1-3): "
+        read choice < /dev/tty
         case $choice in
             1)
                 IDE_TYPE="claude"
@@ -93,7 +94,7 @@ prompt_ide_selection() {
                 break
                 ;;
             *)
-                echo "❌ Invalid choice. Please enter 1, 2, or 3."
+                echo "❌ Invalid choice '$choice'. Please enter 1, 2, or 3."
                 ;;
         esac
     done
@@ -138,9 +139,10 @@ validate_agent_os_directories() {
         
         # Ask user if they want to continue
         while true; do
-            read -p "Continue with available project types only? (y/n): " continue_choice
+            echo -n "Continue with available project types only? (y/n): "
+            read continue_choice < /dev/tty
             case $continue_choice in
-                [Yy]*)
+                [Yy]* | [Yy][Ee][Ss]*)
                     # Update arrays to only include valid types
                     ALL_PROJECT_TYPES=("${valid_types[@]}")
                     if [ ${#ALL_PROJECT_TYPES[@]} -eq 0 ]; then
@@ -148,15 +150,20 @@ validate_agent_os_directories() {
                         return 1
                     fi
                     PRIMARY_PROJECT_TYPE="${ALL_PROJECT_TYPES[0]}"
+                    # Update ADDITIONAL_PROJECT_TYPES array
+                    ADDITIONAL_PROJECT_TYPES=("${ALL_PROJECT_TYPES[@]:1}")
                     echo "✓ Continuing with: ${ALL_PROJECT_TYPES[*]}"
                     break
                     ;;
-                [Nn]*)
+                [Nn]* | [Nn][Oo]*)
                     handle_error "User chose not to continue with missing project types."
                     return 1
                     ;;
+                "")
+                    echo "❌ Please enter y or n."
+                    ;;
                 *)
-                    echo "Please answer y or n."
+                    echo "❌ Invalid input '$continue_choice'. Please enter y or n."
                     ;;
             esac
         done
