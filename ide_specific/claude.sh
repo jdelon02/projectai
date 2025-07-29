@@ -3,81 +3,69 @@
 # Claude IDE specific instruction file generator
 # This file contains the logic for creating CLAUDE.md instruction files
 
+# Main setup function called by projectai.sh
+ide_setup() {
+    local project_types_display
+    if [ ${#ALL_PROJECT_TYPES[@]} -eq 1 ]; then
+        project_types_display="$PRIMARY_PROJECT_TYPE"
+    else
+        project_types_display="$PRIMARY_PROJECT_TYPE (+ ${ADDITIONAL_PROJECT_TYPES[*]})"
+    fi
+
+    # Create Claude instruction file
+    if ! create_claude_instruction_file "$project_types_display"; then
+        return 1
+    fi
+    
+    # Report success
+    echo "✓ Claude setup completed successfully"
+    return 0
+}
+
 create_claude_instruction_file() {
     local project_types_display="$1"
     local instruction_file="$FULL_PATH/CLAUDE.md"
-    
-    cat > "$instruction_file" << EOF
+    local template_url="${BASE_URL}/project_templates/claude-code/CLAUDE.md"
+
+    if curl -s --fail -o "$instruction_file" "$template_url" 2>/dev/null; then
+        if [ -f "$instruction_file" ]; then
+            local additional_sections=""
+            for project_type in "${ADDITIONAL_PROJECT_TYPES[@]}"; do
+                additional_sections+="### $project_type Standards"$'\n'
+                additional_sections+="- **Tech Stack:** @~/.agent-os/$project_type/tech-stack.md"$'\n'
+                additional_sections+="- **Code Style:** @~/.agent-os/$project_type/code-style.md"$'\n'
+                additional_sections+="- **Best Practices:** @~/.agent-os/$project_type/best-practices.md"$'\n'
+                additional_sections+="- **Instructions:** @~/.agent-os/$project_type/main.instructions.md"$'\n'$'\n'
+            done
+
+            # Create replacement strings
+            local additional_types_str="${ADDITIONAL_PROJECT_TYPES[*]}"
+            local all_types_str="${ALL_PROJECT_TYPES[*]}"
+
+            if sed -i '' \
+                -e "s/<PROJECTTYPE>/$PRIMARY_PROJECT_TYPE/g" \
+                -e "s/<DIRECTORY_NAME>/$DIRECTORY/g" \
+                -e "s/<ADDITIONAL_TYPES>/$additional_types_str/g" \
+                -e "s/<ALL_TYPES>/$all_types_str/g" \
+                -e "s/<PROJECT_TYPES_DISPLAY>/$project_types_display/g" \
+                -e "s/<ADDITIONAL_SECTIONS>/$additional_sections/g" \
+                "$instruction_file" 2>/dev/null; then
+                echo "    ✓ Created and customized CLAUDE.md file with ${#ALL_PROJECT_TYPES[@]} project type(s)"
+            else
+                echo "    ⚠️  Created CLAUDE.md but failed to customize placeholders"
+            fi
+        fi
+    else
+        echo "    ⚠️  Failed to download CLAUDE.md template, creating basic version"
+        # Fallback to a simple version if template download fails
+        cat > "$instruction_file" << EOF
 # CLAUDE.md
 
-> Agent OS Project Instructions
-> Primary Project Type: $PRIMARY_PROJECT_TYPE
-> Additional Types: ${ADDITIONAL_PROJECT_TYPES[*]}
-> Directory: $DIRECTORY
-> Generated: $(date +"%Y-%m-%d")
+This is a **$PRIMARY_PROJECT_TYPE** project using Agent OS structured development workflows.
 
-## Purpose
-
-This file directs Claude Code to use your Agent OS standards for this multi-type project ($project_types_display). These instructions reference your global Agent OS installation and provide project-specific context.
-
-## Primary Project Standards ($PRIMARY_PROJECT_TYPE)
-
-### Development Standards
-- **Tech Stack Defaults:** @~/.agent-os/$PRIMARY_PROJECT_TYPE/tech-stack.md
-- **Code Style Preferences:** @~/.agent-os/$PRIMARY_PROJECT_TYPE/code-style.md
-- **Best Practices Philosophy:** @~/.agent-os/$PRIMARY_PROJECT_TYPE/best-practices.md
-- **Main Instructions:** @~/.agent-os/$PRIMARY_PROJECT_TYPE/main.instructions.md
-
-## Additional Technology Standards
-
+For complete instructions, see: \`~/.agent-os/$PRIMARY_PROJECT_TYPE/main.instructions.md\`
 EOF
+    fi
     
-    # Add references for additional project types
-    for project_type in "${ADDITIONAL_PROJECT_TYPES[@]}"; do
-        cat >> "$instruction_file" << EOF
-### $project_type Standards
-- **Tech Stack:** @~/.agent-os/$project_type/tech-stack.md
-- **Code Style:** @~/.agent-os/$project_type/code-style.md
-- **Best Practices:** @~/.agent-os/$project_type/best-practices.md
-- **Instructions:** @~/.agent-os/$project_type/main.instructions.md
-
-EOF
-    done
-    
-    cat >> "$instruction_file" << EOF
-## Agent OS Instructions
-- **Initialize Products:** @~/.agent-os/instructions/plan-product.md
-- **Plan Features:** @~/.agent-os/instructions/create-spec.md
-- **Execute Tasks:** @~/.agent-os/instructions/execute-tasks.md
-- **Analyze Existing Code:** @~/.agent-os/instructions/analyze-product.md
-
-## Project Context
-
-- **Primary Type:** $PRIMARY_PROJECT_TYPE
-- **Additional Types:** ${ADDITIONAL_PROJECT_TYPES[*]}
-- **Directory Name:** $DIRECTORY
-- **Full Path:** $FULL_PATH
-
-## Using Agent OS Commands
-
-You can invoke Agent OS commands directly:
-- \`/plan-product\` - Start planning this product
-- \`/create-spec\` - Plan a new feature for this project
-- \`/execute-task\` - Build and ship code for this project
-- \`/analyze-product\` - Analyze this existing codebase
-
-## Important Notes
-
-- Primary standards from \`~/.agent-os/$PRIMARY_PROJECT_TYPE/\` take precedence
-- Additional technology standards provide supplementary guidance
-- Project-specific files in this directory override global defaults
-- Update Agent OS standards as you discover new patterns
-
----
-
-*Using Agent OS for structured AI-assisted development. Learn more at [buildermethods.com/agent-os](https://buildermethods.com/agent-os)*
-EOF
-    
-    echo "    ✓ Created CLAUDE.md instruction file with ${#ALL_PROJECT_TYPES[@]} project type(s)"
     return 0
 }

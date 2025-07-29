@@ -8,6 +8,11 @@
 # Agent OS Standards
 You are working on a <PROJECTTYPE> project with additional technologies (<ADDITIONAL_TYPES>) using Agent OS structured development methodology.
 
+## Additional Technology Standards
+
+<!-- Additional project type standards will be dynamically generated -->
+
+
 ## Primary Reference Files (<PROJECTTYPE>)
 - Main Instructions: ~/.agent-os/<PROJECTTYPE>/main.instructions.md
 - Tech Stack Standards: ~/.agent-os/<PROJECTTYPE>/tech-stack.md

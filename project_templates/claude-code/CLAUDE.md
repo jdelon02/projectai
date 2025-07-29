@@ -8,7 +8,7 @@
 
 ## Purpose
 
-This file directs Claude Code to use your Agent OS standards for this multi-type project (<PROJECT_TYPES_DISPLAY>). These instructions reference your global Agent OS installation and provide project-specific context.
+This file directs Claude Code to use your Agent OS standards for this <PROJECTTYPE> project with additional technologies (<ADDITIONAL_TYPES>). These instructions reference your global Agent OS installation and provide project-specific context.
 
 ## Primary Project Standards (<PROJECTTYPE>)
 
@@ -20,7 +20,7 @@ This file directs Claude Code to use your Agent OS standards for this multi-type
 
 ## Additional Technology Standards
 
-<ADDITIONAL_SECTIONS>
+<!-- Additional project type standards will be dynamically generated -->
 
 ## Agent OS Instructions
 - **Initialize Products:** @~/.agent-os/instructions/plan-product.md

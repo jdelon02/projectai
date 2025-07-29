@@ -20,7 +20,7 @@
         "github.copilot.chat.codeGeneration.useInstructionFiles": true,
         "github.copilot.chat.codeGeneration.instructions": [
             {
-                "file": "${workspaceFolder}/.github/instructions/main.instructions.md"
+                "file": "${workspaceFolder}/.github/copilot-instructions.md"
             }
         ],
         "github.copilot.chat.testGeneration.instructions": [

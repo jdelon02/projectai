@@ -3,64 +3,75 @@
 # Cursor IDE specific instruction file generator
 # This file contains the logic for creating .cursorrules files
 
+# Main setup function called by projectai.sh
+ide_setup() {
+    # Create Cursor instruction file
+    if ! create_cursor_instruction_file; then
+        return 1
+    fi
+    
+    # Report success
+    echo "✓ Cursor IDE setup completed successfully"
+    return 0
+}
+
 create_cursor_instruction_file() {
     local project_types_display="$1"
     local instruction_file="$FULL_PATH/.cursorrules"
-    
-    cat > "$instruction_file" << EOF
-# Cursor IDE Rules - Agent OS Project
+    local template_url="${BASE_URL}/project_templates/cursor-ide/.cursorrules"
 
-# Primary Project Type: $PRIMARY_PROJECT_TYPE
-# Additional Types: ${ADDITIONAL_PROJECT_TYPES[*]}
-# Directory: $DIRECTORY
-# Generated: $(date +"%Y-%m-%d")
+    if curl -s --fail -o "$instruction_file" "$template_url" 2>/dev/null; then
+        if [ -f "$instruction_file" ]; then
+local additional_sections=""
+            for project_type in "${ADDITIONAL_PROJECT_TYPES[@]}"; do
+                additional_sections+="## Additional Standards ($project_type)"$'
+'
+                additional_sections+="- Instructions: ~/.agent-os/$project_type/main.instructions.md"$'
+'
+                additional_sections+="- Tech Stack: ~/.agent-os/$project_type/tech-stack.md"$'
+'
+                additional_sections+="- Code Style: ~/.agent-os/$project_type/code-style.md"$'
+'
+                additional_sections+="- Best Practices: ~/.agent-os/$project_type/best-practices.md"$'
+'$'
+'
+            done
 
-# Agent OS Standards
-You are working on a $PRIMARY_PROJECT_TYPE project with additional technologies (${ADDITIONAL_PROJECT_TYPES[*]}) using Agent OS structured development methodology.
+            # Create replacement strings
+            local additional_types_str="${ADDITIONAL_PROJECT_TYPES[*]}"
+            local all_types_str="${ALL_PROJECT_TYPES[*]}"
 
-## Primary Reference Files ($PRIMARY_PROJECT_TYPE)
-- Main Instructions: ~/.agent-os/$PRIMARY_PROJECT_TYPE/main.instructions.md
-- Tech Stack Standards: ~/.agent-os/$PRIMARY_PROJECT_TYPE/tech-stack.md
-- Code Style Guide: ~/.agent-os/$PRIMARY_PROJECT_TYPE/code-style.md
-- Best Practices: ~/.agent-os/$PRIMARY_PROJECT_TYPE/best-practices.md
+            if sed -i '' 
+                -e "s/<PROJECTTYPE>/$PRIMARY_PROJECT_TYPE/g" 
+                -e "s/<DIRECTORY_NAME>/$DIRECTORY/g" 
+                -e "s/<ADDITIONAL_TYPES>/$additional_types_str/g" 
+                -e "s/<ALL_TYPES>/$all_types_str/g" 
+                -e "s/<ADDITIONAL_SECTIONS>/$additional_sections/g" 
+                "$instruction_file" 2>/dev/null; then
+                echo "    ✓ Created and customized .cursorrules file with ${#ALL_PROJECT_TYPES[@]} project type(s)"
+            else
+                echo "    ⚠️  Created .cursorrules but failed to customize placeholders"
+            fi
+        fi
+    else
+        echo "    ⚠️  Failed to download .cursorrules template, creating basic version"
+        # Fallback to a simple version if template download fails
+        cat > "$instruction_file" << EOF
 
 EOF
     
     # Add references for additional project types
     for project_type in "${ADDITIONAL_PROJECT_TYPES[@]}"; do
         cat >> "$instruction_file" << EOF
-## Additional Standards ($project_type)
-- Instructions: ~/.agent-os/$project_type/main.instructions.md
-- Tech Stack: ~/.agent-os/$project_type/tech-stack.md
-- Code Style: ~/.agent-os/$project_type/code-style.md
-- Best Practices: ~/.agent-os/$project_type/best-practices.md
+# Cursor IDE Rules - Agent OS Project
 
+You are working on a $PRIMARY_PROJECT_TYPE project using Agent OS structured development methodology.
+
+Main Instructions: ~/.agent-os/$PRIMARY_PROJECT_TYPE/main.instructions.md"
 EOF
-    done
+    fi
     
-    cat >> "$instruction_file" << EOF
-## Development Approach
-1. Always reference the Agent OS standards, prioritizing $PRIMARY_PROJECT_TYPE as primary
-2. Apply additional technology standards as supplementary guidance
-3. Follow spec-driven development - plan before implementing
-4. Maintain clean, modular architecture
-5. Document architectural decisions
-6. Follow the established conventions for all referenced technologies
-
-## Project Context
-- Primary Type: $PRIMARY_PROJECT_TYPE
-- Additional Types: ${ADDITIONAL_PROJECT_TYPES[*]}
-- Name: $DIRECTORY
-- Path: $FULL_PATH
-
-## Agent OS Workflow Integration
-- Plan products using ~/.agent-os/instructions/plan-product.md
-- Create specifications with ~/.agent-os/instructions/create-spec.md
-- Execute tasks following ~/.agent-os/instructions/execute-tasks.md
-- Analyze code using ~/.agent-os/instructions/analyze-product.md
-
-Always prioritize code quality, maintainability, and adherence to the established Agent OS standards for this multi-technology project.
-EOF
+    return 0
     
     echo "    ✓ Created .cursorrules file with ${#ALL_PROJECT_TYPES[@]} project type(s)"
     return 0

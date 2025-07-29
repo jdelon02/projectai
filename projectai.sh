@@ -44,20 +44,36 @@ if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
     exit 0
 fi
 
-# Set variables
-PRIMARY_PROJECT_TYPE="$1"
-shift # Remove first argument
-ADDITIONAL_PROJECT_TYPES=("$@") # Remaining arguments as array
+# Parse input and set variables only if they don't exist
+if [ -z "${PRIMARY_PROJECT_TYPE+x}" ] || [ -z "${ADDITIONAL_PROJECT_TYPES+x}" ]; then
+    # Parse comma-separated input
+    IFS=',' read -r -a ALL_TYPES <<< "$1"
+    
+    # Set primary type if not set
+    if [ -z "${PRIMARY_PROJECT_TYPE+x}" ]; then
+        PRIMARY_PROJECT_TYPE=$(echo "${ALL_TYPES[0]}" | tr '[:upper:]' '[:lower:]')
+    fi
+    
+    # Set additional types if not set
+    if [ -z "${ADDITIONAL_PROJECT_TYPES+x}" ]; then
+        ADDITIONAL_PROJECT_TYPES=()
+        for ((i=1; i<${#ALL_TYPES[@]}; i++)); do
+            ADDITIONAL_PROJECT_TYPES+=("$(echo "${ALL_TYPES[$i]}" | tr '[:upper:]' '[:lower:]')")
+        done
+    fi
+fi
 
-# Normalize all project types to lowercase for directory consistency
-PRIMARY_PROJECT_TYPE=$(echo "$PRIMARY_PROJECT_TYPE" | tr '[:upper:]' '[:lower:]')
-for i in "${!ADDITIONAL_PROJECT_TYPES[@]}"; do
-    ADDITIONAL_PROJECT_TYPES[$i]=$(echo "${ADDITIONAL_PROJECT_TYPES[$i]}" | tr '[:upper:]' '[:lower:]')
-done
+# Set derived variables only if they don't exist
+if [ -z "${ALL_PROJECT_TYPES+x}" ]; then
+    ALL_PROJECT_TYPES=("$PRIMARY_PROJECT_TYPE" "${ADDITIONAL_PROJECT_TYPES[@]}")
+fi
 
-ALL_PROJECT_TYPES=("$PRIMARY_PROJECT_TYPE" "${ADDITIONAL_PROJECT_TYPES[@]}")
-FULL_PATH="$(pwd)"
-DIRECTORY=$(basename "$FULL_PATH")
+if [ -z "${FULL_PATH+x}" ]; then
+    FULL_PATH="$(pwd)"
+fi
+
+if [ -z "${DIRECTORY+x}" ]; then
+    DIRECTORY=$(basename "$FULL_PATH")
 
 # Base URL for raw GitHub content
 BASE_URL="https://raw.githubusercontent.com/jdelon02/agent-os/main"
@@ -195,174 +211,59 @@ handle_error() {
 create_instruction_file() {
     echo "📝 Creating IDE-specific instruction file..."
     
-    # Generate project types list for display
-    local project_types_display
-    if [ ${#ALL_PROJECT_TYPES[@]} -eq 1 ]; then
-        project_types_display="$PRIMARY_PROJECT_TYPE"
-    else
-        project_types_display="$PRIMARY_PROJECT_TYPE (+ ${ADDITIONAL_PROJECT_TYPES[*]})"
+    # Load and execute IDE-specific script
+    local ide_script="$SCRIPT_DIR/ide_specific/${IDE_TYPE}.sh"
+    
+    if [ ! -f "$ide_script" ]; then
+        handle_error "IDE script not found: ${ide_script}"
+        return 1
     fi
     
-    case $IDE_TYPE in
-        "claude")
-            local instruction_file="$FULL_PATH/CLAUDE.md"
-            local claude_template="${BASE_URL}/project_templates/claude-code/CLAUDE.md"
-            
-            if curl -s --fail -o "$instruction_file" "$claude_template" 2>/dev/null; then
-                # Generate additional sections for multiple project types
-                local additional_sections=""
-                for project_type in "${ADDITIONAL_PROJECT_TYPES[@]}"; do
-                    additional_sections+="### $project_type Standards"$'\n'
-                    additional_sections+="- **Tech Stack:** @~/.agent-os/$project_type/tech-stack.md"$'\n'
-                    additional_sections+="- **Code Style:** @~/.agent-os/$project_type/code-style.md"$'\n'
-                    additional_sections+="- **Best Practices:** @~/.agent-os/$project_type/best-practices.md"$'\n'
-                    additional_sections+="- **Instructions:** @~/.agent-os/$project_type/main.instructions.md"$'\n'$'\n'
-                done
-                
-                # Apply template replacements
-                local additional_types_str="${ADDITIONAL_PROJECT_TYPES[*]}"
-                
-                if sed -i '' \
-                    -e "s/<PROJECTTYPE>/$PRIMARY_PROJECT_TYPE/g" \
-                    -e "s/<DIRECTORY_NAME>/$DIRECTORY/g" \
-                    -e "s/<ADDITIONAL_TYPES>/$additional_types_str/g" \
-                    -e "s|<FULL_PATH>|$FULL_PATH|g" \
-                    -e "s/<PROJECT_TYPES_DISPLAY>/$project_types_display/g" \
-                    -e "s/<ADDITIONAL_SECTIONS>/$additional_sections/g" \
-                    "$instruction_file" 2>/dev/null; then
-                    echo "    ✓ Created CLAUDE.md instruction file"
-                else
-                    echo "    ⚠️  Created CLAUDE.md but failed to customize placeholders"
-                fi
-            else
-                echo "    ⚠️  Failed to download CLAUDE.md template, creating basic version"
-                # Fallback to a simple version if template download fails
-                cat > "$instruction_file" << EOF
-# CLAUDE.md
+    # Export variables needed by IDE scripts
+    export PRIMARY_PROJECT_TYPE
+    export ADDITIONAL_PROJECT_TYPES
+    export ALL_PROJECT_TYPES
+    export FULL_PATH
+    export DIRECTORY
+    export BASE_URL
+    export SCRIPT_DIR
+    
+    # Source the IDE-specific script and run its setup function
+    source "$ide_script"
+    
+    # Execute IDE-specific setup
+    if ! ide_setup; then
+        handle_error "IDE setup failed"
+        return 1
+    fi
+    
+    return 0
+}
 
-This is a **$PRIMARY_PROJECT_TYPE** project using Agent OS structured development workflows.
-
-For complete instructions, see: \`~/.agent-os/$PRIMARY_PROJECT_TYPE/main.instructions.md\`
-EOF
-            fi
-            ;;
-            
-        "vscode")
-            # Create .github/instructions directory
-            local instructions_dir="$FULL_PATH/.github/instructions"
-            mkdir -p "$instructions_dir"
-            local instruction_file="$instructions_dir/main.instructions.md"
-            local vscode_template="${BASE_URL}/project_templates/.github/instructions/main.instructions.md"
-            
-            if curl -s --fail -o "$instruction_file" "$vscode_template" 2>/dev/null; then
-                # Generate additional sections for multiple project types
-                local additional_sections=""
-                for project_type in "${ADDITIONAL_PROJECT_TYPES[@]}"; do
-                    additional_sections+="### $project_type"$'\n'
-                    additional_sections+="- Instructions: \`~/.agent-os/$project_type/main.instructions.md\`"$'\n'
-                    additional_sections+="- Tech Stack: \`~/.agent-os/$project_type/tech-stack.md\`"$'\n'
-                    additional_sections+="- Code Style: \`~/.agent-os/$project_type/code-style.md\`"$'\n'
-                    additional_sections+="- Best Practices: \`~/.agent-os/$project_type/best-practices.md\`"$'\n'$'\n'
-                done
-                
-                # Apply template replacements
-                local additional_types_str="${ADDITIONAL_PROJECT_TYPES[*]}"
-                
-                if sed -i '' \
-                    -e "s/<PROJECTTYPE>/$PRIMARY_PROJECT_TYPE/g" \
-                    -e "s/<DIRECTORY_NAME>/$DIRECTORY/g" \
-                    -e "s/<ADDITIONAL_TYPES>/$additional_types_str/g" \
-                    -e "s|<FULL_PATH>|$FULL_PATH|g" \
-                    -e "s/<ADDITIONAL_SECTIONS>/$additional_sections/g" \
-                    "$instruction_file" 2>/dev/null; then
-                    echo "    ✓ Created .github/instructions/main.instructions.md file"
-                else
-                    echo "    ⚠️  Created main.instructions.md but failed to customize placeholders"
-                fi
-            else
-                echo "    ⚠️  Failed to download main.instructions.md template, creating basic version"
-                # Fallback to a simple version if template download fails
-                cat > "$instruction_file" << EOF
-# GitHub Copilot Instructions
-
-This is a **$PRIMARY_PROJECT_TYPE** project using Agent OS structured development workflows.
-
-For complete instructions, see: \`~/.agent-os/$PRIMARY_PROJECT_TYPE/main.instructions.md\`
-EOF
-            fi
-            
-            # Copy and customize copilot-instructions.md template
-            local copilot_file="$FULL_PATH/.github/copilot-instructions.md"
-            local copilot_template="${BASE_URL}/project_templates/.github/copilot-instructions.md"
-            
-            if curl -s --fail -o "$copilot_file" "$copilot_template" 2>/dev/null; then
-                # Create replacement strings for multiple project types
-                local additional_types_str="${ADDITIONAL_PROJECT_TYPES[*]}"
-                local all_types_str="${ALL_PROJECT_TYPES[*]}"
-                
-                if sed -i '' \
-                    -e "s/<PROJECTTYPE>/$PRIMARY_PROJECT_TYPE/g" \
-                    -e "s/<DIRECTORY_NAME>/$DIRECTORY/g" \
-                    -e "s/<ADDITIONAL_TYPES>/$additional_types_str/g" \
-                    -e "s/<ALL_TYPES>/$all_types_str/g" \
-                    -e "s|<FULL_PATH>|$FULL_PATH|g" \
-                    "$copilot_file" 2>/dev/null; then
-                    echo "    ✓ Created .github/copilot-instructions.md for auto-detection"
-                else
-                    echo "    ⚠️  Created copilot-instructions.md but failed to customize placeholders"
-                fi
-            else
-                echo "    ⚠️  Failed to download copilot-instructions.md template, creating basic version"
-                # Fallback to a simple version if template download fails
-                cat > "$copilot_file" << EOF
-# GitHub Copilot Instructions
-
-For complete instructions, see: [Main Instructions](instructions/main.instructions.md)
-
-This is a **$PRIMARY_PROJECT_TYPE** project using Agent OS structured development workflows.
-EOF
+# Function to check if curl request succeeded
+check_curl() {
+    local url="$1"
+    local description="$2"
+    if ! curl --output /dev/null --silent --head --fail "$url"; then
+        handle_error "Unable to access $description at $url"
+        return 1
+    fi
+    return 0
+}
+            # Load and execute VS Code specific setup
+            source "$SCRIPT_DIR/ide_specific/vscode.sh"
+            if ! ide_setup; then
+                handle_error "VS Code setup failed"
+                return 1
             fi
             ;;
             
         "cursor")
-            local instruction_file="$FULL_PATH/.cursorrules"
-            local cursor_template="${BASE_URL}/project_templates/cursor-ide/.cursorrules"
-            
-            if curl -s --fail -o "$instruction_file" "$cursor_template" 2>/dev/null; then
-                # Generate additional sections for multiple project types
-                local additional_sections=""
-                for project_type in "${ADDITIONAL_PROJECT_TYPES[@]}"; do
-                    additional_sections+="## Additional Standards ($project_type)"$'\n'
-                    additional_sections+="- Instructions: ~/.agent-os/$project_type/main.instructions.md"$'\n'
-                    additional_sections+="- Tech Stack: ~/.agent-os/$project_type/tech-stack.md"$'\n'
-                    additional_sections+="- Code Style: ~/.agent-os/$project_type/code-style.md"$'\n'
-                    additional_sections+="- Best Practices: ~/.agent-os/$project_type/best-practices.md"$'\n'$'\n'
-                done
-                
-                # Apply template replacements
-                local additional_types_str="${ADDITIONAL_PROJECT_TYPES[*]}"
-                
-                if sed -i '' \
-                    -e "s/<PROJECTTYPE>/$PRIMARY_PROJECT_TYPE/g" \
-                    -e "s/<DIRECTORY_NAME>/$DIRECTORY/g" \
-                    -e "s/<ADDITIONAL_TYPES>/$additional_types_str/g" \
-                    -e "s|<FULL_PATH>|$FULL_PATH|g" \
-                    -e "s/<ADDITIONAL_SECTIONS>/$additional_sections/g" \
-                    "$instruction_file" 2>/dev/null; then
-                    echo "    ✓ Created .cursorrules file with ${#ALL_PROJECT_TYPES[@]} project type(s)"
-                else
-                    echo "    ⚠️  Created .cursorrules but failed to customize placeholders"
-                fi
-            else
-                echo "    ⚠️  Failed to download .cursorrules template, creating basic version"
-                # Fallback to a simple version if template download fails
-                cat > "$instruction_file" << EOF
-# Cursor IDE Rules - Agent OS Project
-
-You are working on a $PRIMARY_PROJECT_TYPE project using Agent OS structured development methodology.
-
-Main Instructions: ~/.agent-os/$PRIMARY_PROJECT_TYPE/main.instructions.md
-EOF
+            # Load and execute Cursor IDE specific setup
+            source "$SCRIPT_DIR/ide_specific/cursor.sh"
+            if ! ide_setup; then
+                handle_error "Cursor IDE setup failed"
+                return 1
             fi
             ;;
     esac
@@ -391,6 +292,7 @@ copy_and_replace() {
         return 1
     }
     trap 'rm -rf "$temp_dir"' EXIT
+    }
     
     # Check GitHub connectivity first
     if ! check_curl "${BASE_URL}" "GitHub repository"; then

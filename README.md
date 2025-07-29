@@ -1,6 +1,6 @@
 # ProjectAI
 
-A powerful initialization script that extends Agent OS functionality to set up AI-assisted development projects with IDE-specific configurations.
+A powerful initialization script that extends Agent OS functionality to set up AI-assisted development projects with IDE-specific configurations, using templates from GitHub.
 
 ## Overview
 
@@ -9,6 +9,8 @@ ProjectAI automatically:
 - 🤖 Configures AI coding tools (Claude Code, VS Code with GitHub Copilot, or Cursor IDE)
 - 📂 Downloads and customizes project templates from GitHub
 - ⚙️ Sets up IDE-specific instruction files and workspace configurations
+- 🔄 Supports comma-separated input for multiple project types
+- 🌐 Fetches all templates from GitHub for consistency
 
 ## Prerequisites
 
@@ -88,9 +90,9 @@ projectai --help  # Should show usage information
 
 ## Usage
 
-### Basic Usage
+### Basic Syntax
 ```bash
-projectai <primary_project_type> [additional_project_types...]
+projectai <primary_project_type>[,additional_type1,additional_type2,...]
 ```
 
 ### Examples
@@ -100,19 +102,21 @@ projectai <primary_project_type> [additional_project_types...]
 projectai drupal
 ```
 
-**Multiple project types:**
+**Multiple project types (comma-separated):**
+```bash
+projectai drupal,php,mysql,css,javascript,lando
+```
+
+**Multiple project types (space-separated, legacy mode):**
 ```bash
 projectai drupal php mysql css javascript lando
 ```
 
-**Web development project:**
+**Common project combinations:**
 ```bash
-projectai react typescript tailwind
-```
-
-**Python project:**
-```bash
-projectai python fastapi postgresql
+projectai react,typescript,tailwind  # React project
+projectai python,fastapi,postgresql  # Python API project
+projectai nodejs,express,mongodb     # Node.js backend
 ```
 
 ### Parameters
@@ -145,26 +149,50 @@ After running the command, you'll be prompted to select your AI coding tool:
    - Integrated AI-powered code editor
 ```
 
-## What Gets Created
+### IDE Support
 
-### For All IDEs
-- Project templates downloaded from GitHub
-- Customized files with your project types and directory name
-- Template files in various directories (docs, src, config, etc.)
+When running ProjectAI, you'll choose your IDE:
 
-### IDE-Specific Files
+1. **Claude Code (Anthropic)**
+   - Creates: `CLAUDE.md`
+   - Supports: Agent OS commands (`/plan-product`, `/create-spec`, etc.)
+   - Templates: Fetched from `project_templates/claude-code/`
 
-#### Claude Code
-- `CLAUDE.md` - Agent OS instructions and commands
+2. **VS Code with GitHub Copilot**
+   - Creates: 
+     - `.github/instructions/main.instructions.md`
+     - `.github/copilot-instructions.md`
+     - `.vscode/project-name.code-workspace`
+   - Supports: Copilot Chat commands and auto-configuration
+   - Templates: Fetched from `project_templates/.github/` and `.vscode/`
 
-#### VS Code with GitHub Copilot
-- `.github/instructions/main.instructions.md` - GitHub Copilot instructions
-- `.vscode/PROJECT_NAME.code-workspace` - VS Code workspace file
-- `.vscode/settings.json` - VS Code settings (if template exists)
-- `.vscode/tasks.json` - Build tasks (if template exists)
+3. **Cursor IDE**
+   - Creates: `.cursorrules`
+   - Supports: Built-in AI features
+   - Templates: Fetched from `project_templates/cursor-ide/`
 
-#### Cursor IDE
-- `.cursorrules` - Cursor IDE configuration and rules
+### Generated Files
+
+Each IDE setup includes:
+- IDE-specific instruction files
+- Project templates (from GitHub)
+- Customized configurations
+- Documentation
+
+Directory structure after setup:
+```
+your-project/
+├── .github/                    # For VS Code/Copilot
+│   ├── instructions/
+│   │   └── main.instructions.md
+│   └── copilot-instructions.md
+├── .vscode/                    # VS Code specific
+│   ├── project.code-workspace
+│   └── settings.json
+├── CLAUDE.md                   # For Claude Code
+├── .cursorrules               # For Cursor IDE
+└── [template directories]/    # Additional project files
+```
 
 ## Project Structure After Setup
 
