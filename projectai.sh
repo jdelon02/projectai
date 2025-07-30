@@ -18,18 +18,18 @@ set -e
         }
         
         # First check if the GitHub URL is accessible
-        if ! curl --output /dev/null --silent --head --fail "$ide_script_url"; then
+        if ! curl --output /dev/null --silent --head --fail "$ide_script_url"; {
             rm -f "$temp_script"
             handle_error "IDE script not found at $ide_script_url"
             return 1
         }
         
         # Download the script
-        if ! curl -s --fail -o "$temp_script" "$ide_script_url"; then
+        if ! curl -s --fail -o "$temp_script" "$ide_script_url"; {
             rm -f "$temp_script"
             handle_error "Failed to download IDE script from $ide_script_url"
             return 1
-        }t 1 ]; then
+        }
     echo "Error: Missing project type argument(s)"
     echo "Usage: projectai <primary_project_type> [additional_project_types...]"
     echo "Example: projectai drupal php mysql css javascript lando"
