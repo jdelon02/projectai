@@ -267,11 +267,6 @@ BASE_URL="https://raw.githubusercontent.com/jdelon02/projectai/main"
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Set project root to current directory
-if [ -z "${FULL_PATH+x}" ]; then
-    FULL_PATH="$(pwd)"
-fi
-
 # Function to prompt user for IDE selection
 prompt_ide_selection() {
     echo ""
@@ -600,19 +595,19 @@ main() {
         return 1
     fi
     
+    # Create Agent OS symlinks BEFORE IDE setup
+    echo "🔗 Setting up Agent OS reference documentation..."
+    create_global_symlinks "$FULL_PATH"
+    create_project_type_symlinks "$FULL_PATH" "${ALL_PROJECT_TYPES[@]}"
+    
     # Prompt user for IDE selection
     prompt_ide_selection
     
-    # Create IDE-specific instruction file
+    # Create IDE-specific instruction file (now that reference-docs exist)
     if ! create_instruction_file; then
         handle_error "Failed to create instruction file"
         return 1
     fi
-    
-    # Create Agent OS symlinks
-    echo "🔗 Setting up Agent OS reference documentation..."
-    create_global_symlinks "$FULL_PATH"
-    create_project_type_symlinks "$FULL_PATH" "${ALL_PROJECT_TYPES[@]}"
     
     # Execute the copy and replace function for additional templates
     if copy_and_replace; then
