@@ -411,14 +411,15 @@ create_instruction_file() {
     
     # Download the script to a temporary file first so we can inspect it
     local temp_script=$(mktemp)
+
+    # Make it executable
+    chmod +x "$temp_script"
+
     if ! curl -sSL "$ide_script_url" -o "$temp_script"; then
         rm -f "$temp_script"
         handle_error "Failed to download IDE script from $ide_script_url"
         return 1
     fi
-    
-    # Make it executable
-    chmod +x "$temp_script"
     
     # Change to the project directory and execute the IDE script
     echo "  📜 Executing IDE script from: $ide_script_url"
@@ -468,15 +469,22 @@ copy_and_replace() {
         return 1
     }
     
-    # Parse JSON to get directory names
+    # Parse JSON to get directory names - most robust approach
     local template_dirs=()
+    # Process the JSON line by line to find directories
+    local current_name=""
     while IFS= read -r line; do
-        if [[ $line =~ \"type\":\ *\"dir\" ]]; then
-            if [[ $(echo "$file_list" | grep -B1 "$line") =~ \"name\":\ *\"([^\"]+)\" ]]; then
-                template_dirs+=("${BASH_REMATCH[1]}")
-            fi
+        # Check if this line contains a name
+        if [[ $line =~ \"name\":\ *\"([^\"]+)\" ]]; then
+            current_name="${BASH_REMATCH[1]}"
+        # Check if this line indicates it's a directory
+        elif [[ $line =~ \"type\":\ *\"dir\" ]] && [ -n "$current_name" ]; then
+            template_dirs+=("$current_name")
+            current_name=""
         fi
     done < <(echo "$file_list")
+    
+    echo "🔍 Debug: Found directories: ${template_dirs[*]}"
     
     if [ ${#template_dirs[@]} -eq 0 ]; then
         handle_error "No template directories found in project_templates/"
@@ -512,19 +520,24 @@ copy_and_replace() {
             continue
         }
         
-        # Parse JSON to get file names
+        # Parse JSON to get file names - most robust approach
         local files=()
+        local current_name=""
         while IFS= read -r line; do
-            if [[ $line =~ \"type\":\ *\"file\" ]]; then
-                if [[ $(echo "$dir_contents" | grep -B1 "$line") =~ \"name\":\ *\"([^\"]+)\" ]]; then
-                    filename="${BASH_REMATCH[1]}"
-                    # Only include markdown and config files
-                    if [[ $filename =~ \.(md|json|yaml|yml)$ ]]; then
-                        files+=("$filename")
-                    fi
+            # Check if this line contains a name
+            if [[ $line =~ \"name\":\ *\"([^\"]+)\" ]]; then
+                current_name="${BASH_REMATCH[1]}"
+            # Check if this line indicates it's a file
+            elif [[ $line =~ \"type\":\ *\"file\" ]] && [ -n "$current_name" ]; then
+                # Only include markdown and config files
+                if [[ $current_name =~ \.(md|json|yaml|yml)$ ]]; then
+                    files+=("$current_name")
                 fi
+                current_name=""
             fi
         done < <(echo "$dir_contents")
+        
+        echo "  🔍 Debug: Found files in $template_dir: ${files[*]}"
             
         local file_success=0
         for template_file in "${files[@]}"; do
