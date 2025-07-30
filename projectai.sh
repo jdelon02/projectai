@@ -52,14 +52,14 @@ check_symlink_permissions() {
     if [ ! -d "$dir" ]; then
         echo "❌ Error: Directory $dir does not exist"
         return 1
-    }
+    fi
     
     # Try to create a test symlink
     local test_link="${dir}/.test_symlink"
     if ! ln -sf "$dir" "$test_link" 2>/dev/null; then
         echo "❌ Error: No permission to create symlinks in $dir"
         return 1
-    }
+    fi
     
     # Clean up test symlink
     rm -f "$test_link"
@@ -85,7 +85,7 @@ validate_project_types() {
     if [ ${#valid_types[@]} -eq 0 ]; then
         echo "❌ Error: No valid project types provided"
         return 1
-    }
+    fi
     
     echo "${valid_types[@]}"
     return 0
@@ -105,7 +105,7 @@ check_source_directories() {
     if [ ${#missing[@]} -gt 0 ]; then
         echo "❌ Error: Missing required .agent-os directories: ${missing[*]}"
         return 1
-    }
+    fi
     
     return 0
 }
@@ -119,7 +119,7 @@ safe_create_symlink() {
     if [ ! -e "$source" ]; then
         echo "❌ Error: Source path does not exist: $source"
         return 1
-    }
+    fi
     
     # Check if target already exists
     if [ -e "$target" ] || [ -L "$target" ]; then
@@ -131,7 +131,7 @@ safe_create_symlink() {
     if ! ln -sf "$source" "$target"; then
         echo "❌ Error: Failed to create symlink from $source to $target"
         return 1
-    }
+    fi
     
     return 0
 }
@@ -151,7 +151,7 @@ create_global_symlinks() {
     # Check source directories exist
     if ! check_source_directories "${global_dirs[@]}"; then
         return 1
-    }
+    fi
     
     # Create reference-docs directory in project
     mkdir -p "${project_dir}/reference-docs"
@@ -252,6 +252,7 @@ fi
 
 if [ -z "${DIRECTORY+x}" ]; then
     DIRECTORY=$(basename "$FULL_PATH")
+fi
 
 # Base URL for raw GitHub content
 BASE_URL="https://raw.githubusercontent.com/jdelon02/agent-os/main"
@@ -428,37 +429,42 @@ check_curl() {
     fi
     return 0
 }
-            # Load and execute VS Code specific setup
-            source "$SCRIPT_DIR/ide_specific/vscode.sh"
-            if ! ide_setup; then
-                handle_error "VS Code setup failed"
-                return 1
-            fi
-            ;;
-            
-        "cursor")
-            # Load and execute Cursor IDE specific setup
-            source "$SCRIPT_DIR/ide_specific/cursor.sh"
-            if ! ide_setup; then
-                handle_error "Cursor IDE setup failed"
-                return 1
-            fi
-            ;;
-    esac
-    
-    return 0
-}
-
-# Function to check if curl request succeeded
-check_curl() {
-    local url="$1"
-    local description="$2"
-    if ! curl --output /dev/null --silent --head --fail "$url"; then
-        handle_error "Unable to access $description at $url"
+# Create IDE-specific instruction file based on IDE type
+case "$IDE_TYPE" in
+    "claude")
+        # Load and execute Claude Code specific setup
+        source "$SCRIPT_DIR/ide_specific/claude.sh"
+        if ! ide_setup; then
+            handle_error "Claude Code setup failed"
+            return 1
+        fi
+        ;;
+        
+    "vscode")
+        # Load and execute VS Code specific setup
+        source "$SCRIPT_DIR/ide_specific/vscode.sh"
+        if ! ide_setup; then
+            handle_error "VS Code setup failed"
+            return 1
+        fi
+        ;;
+        
+    "cursor")
+        # Load and execute Cursor IDE specific setup
+        source "$SCRIPT_DIR/ide_specific/cursor.sh"
+        if ! ide_setup; then
+            handle_error "Cursor IDE setup failed"
+            return 1
+        fi
+        ;;
+        
+    *)
+        handle_error "Unknown IDE type: $IDE_TYPE"
         return 1
-    fi
-    return 0
-}
+        ;;
+esac
+
+return 0
 
 # Function to copy templates and perform replacements
 copy_and_replace() {
@@ -470,7 +476,6 @@ copy_and_replace() {
         return 1
     }
     trap 'rm -rf "$temp_dir"' EXIT
-    }
     
     # Check GitHub connectivity first
     if ! check_curl "${BASE_URL}" "GitHub repository"; then
