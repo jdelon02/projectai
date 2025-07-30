@@ -44,6 +44,184 @@ if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
     exit 0
 fi
 
+# Function to check if we have permission to create symlinks in a directory
+check_symlink_permissions() {
+    local dir="$1"
+    
+    # Check if directory exists
+    if [ ! -d "$dir" ]; then
+        echo "❌ Error: Directory $dir does not exist"
+        return 1
+    }
+    
+    # Try to create a test symlink
+    local test_link="${dir}/.test_symlink"
+    if ! ln -sf "$dir" "$test_link" 2>/dev/null; then
+        echo "❌ Error: No permission to create symlinks in $dir"
+        return 1
+    }
+    
+    # Clean up test symlink
+    rm -f "$test_link"
+    return 0
+}
+
+# Function to validate project types against known types
+validate_project_types() {
+    local types=("$@")
+    local valid_types=()
+    
+    # Get list of valid project types from .agent-os directory
+    for type in "${types[@]}"; do
+        type_lower=$(echo "$type" | tr '[:upper:]' '[:lower:]')
+        if [ ! -d "${HOME}/.agent-os/${type_lower}" ]; then
+            echo "⚠️ Warning: Invalid project type '${type}'"
+            continue
+        fi
+        valid_types+=("$type_lower")
+    done
+    
+    # Check if we have any valid types
+    if [ ${#valid_types[@]} -eq 0 ]; then
+        echo "❌ Error: No valid project types provided"
+        return 1
+    }
+    
+    echo "${valid_types[@]}"
+    return 0
+}
+
+# Function to check if source directories exist in .agent-os
+check_source_directories() {
+    local dirs=("$@")
+    local missing=()
+    
+    for dir in "${dirs[@]}"; do
+        if [ ! -d "${HOME}/.agent-os/${dir}" ]; then
+            missing+=("$dir")
+        fi
+    done
+    
+    if [ ${#missing[@]} -gt 0 ]; then
+        echo "❌ Error: Missing required .agent-os directories: ${missing[*]}"
+        return 1
+    }
+    
+    return 0
+}
+
+# Function to safely create symlink with checks
+safe_create_symlink() {
+    local source="$1"
+    local target="$2"
+    
+    # Check if source exists
+    if [ ! -e "$source" ]; then
+        echo "❌ Error: Source path does not exist: $source"
+        return 1
+    }
+    
+    # Check if target already exists
+    if [ -e "$target" ] || [ -L "$target" ]; then
+        echo "⚠️ Warning: Target already exists, removing: $target"
+        rm -f "$target"
+    fi
+    
+    # Create symlink
+    if ! ln -sf "$source" "$target"; then
+        echo "❌ Error: Failed to create symlink from $source to $target"
+        return 1
+    }
+    
+    return 0
+}
+
+# Function to create global symlinks for Agent OS directories
+create_global_symlinks() {
+    local project_dir="$1"
+    local global_dirs=("standards" "instructions" "commands" "chatmodes" "prompts")
+    
+    echo "🔗 Creating global symlinks for Agent OS directories..."
+    
+    # Check directory permissions
+    if ! check_symlink_permissions "${project_dir}"; then
+        return 1
+    fi
+    
+    # Check source directories exist
+    if ! check_source_directories "${global_dirs[@]}"; then
+        return 1
+    }
+    
+    # Create reference-docs directory in project
+    mkdir -p "${project_dir}/reference-docs"
+    
+    # Create symlinks for global directories
+    for dir in "${global_dirs[@]}"; do
+        if [ -d "${HOME}/.agent-os/${dir}" ]; then
+            echo "  ✓ Linking ${dir}"
+            if safe_create_symlink "${HOME}/.agent-os/${dir}" "${project_dir}/reference-docs/${dir}"; then
+                echo "    ✓ Successfully linked ${dir}"
+            else
+                echo "    ❌ Failed to link ${dir}"
+            fi
+        else
+            echo "⚠️  Warning: ${HOME}/.agent-os/${dir} not found"
+        fi
+    done
+}
+
+# Function to create symlinks for project-specific Agent OS directories
+create_project_type_symlinks() {
+    local project_dir="$1"
+    shift
+    local project_types=("$@")
+    
+    echo "🔗 Creating project-specific symlinks..."
+    
+    # Create reference-docs directory for project type symlinks
+    mkdir -p "${project_dir}/reference-docs"
+    
+    # Validate project types
+    local valid_types
+    if ! valid_types=$(validate_project_types "${project_types[@]}"); then
+        return 1
+    fi
+    read -ra valid_types_array <<< "$valid_types"
+    
+    # Check directory permissions
+    if ! check_symlink_permissions "${project_dir}"; then
+        return 1
+    fi
+    
+    # Create symlinks for each project type
+    for type in "${valid_types_array[@]}"; do
+        if [ -d "${HOME}/.agent-os/${type}" ]; then
+            echo "  ✓ Linking ${type} project type"
+            if safe_create_symlink "${HOME}/.agent-os/${type}" "${project_dir}/reference-docs/${type}"; then
+                echo "    ✓ Successfully linked ${type}"
+            else
+                echo "    ❌ Failed to link ${type}"
+                missing_types+=("$type")
+            fi
+        else
+            echo "⚠️  Warning: ${HOME}/.agent-os/${type} not found"
+            missing_types+=("$type")
+        fi
+    done
+    
+    # Report missing project types if any
+    if [ ${#missing_types[@]} -gt 0 ]; then
+        echo ""
+        echo "ℹ️  Some project types were not found in Agent OS:"
+        printf "   - %s\n" "${missing_types[@]}"
+        echo ""
+        echo "💡 To install missing types, run:"
+        echo "   curl -sSL https://raw.githubusercontent.com/jdelon02/agent-os/main/setup.sh | bash -s -- --dirs \"${missing_types[*]}\""
+        echo ""
+    fi
+}
+
 # Parse input and set variables only if they don't exist
 if [ -z "${PRIMARY_PROJECT_TYPE+x}" ] || [ -z "${ADDITIONAL_PROJECT_TYPES+x}" ]; then
     # Parse comma-separated input

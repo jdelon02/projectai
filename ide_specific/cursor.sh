@@ -3,12 +3,90 @@
 # Cursor IDE specific instruction file generator
 # This file contains the logic for creating .cursorrules files
 
+# Function to generate .cursorrules with proper configurations
+generate_cursor_rules() {
+    local project_dir="$1"
+    local cursor_file="${project_dir}/.cursorrules"
+    
+    cat > "$cursor_file" << 'EOF'
+{
+    "prompts": {
+        "source": "./reference-docs/prompts",
+        "common": {
+            "path": "./reference-docs/prompts/common",
+            "description": "Common development workflow prompts and templates"
+        },
+        "projectSpecific": {
+            "path": "./reference-docs/prompts/project-specific",
+            "description": "Project type-specific prompts and templates"
+        }
+    },
+    "commands": {
+        "source": "./reference-docs/commands",
+        "common": {
+            "path": "./reference-docs/commands/common",
+            "description": "Common development workflow commands"
+        },
+        "projectSpecific": {
+            "path": "./reference-docs/commands/project-specific",
+            "description": "Project type-specific commands and tools"
+        }
+    },
+    "standards": "./reference-docs/standards",
+    "instructions": "./reference-docs/instructions",
+    "chatmodes": "./reference-docs/chatmodes",
+    "maintenance": {
+        "sourceTruth": "reference-docs",
+        "relativePathsOnly": true,
+        "updateTriggers": ["newCommand", "newPrompt"]
+    }
+}
+EOF
+}
+
+# Function to set up Cursor command and prompt integration
+setup_cursor_integrations() {
+    local project_dir="$1"
+    
+    # Verify required directories exist
+    local required_dirs=(
+        "${project_dir}/reference-docs/prompts"
+        "${project_dir}/reference-docs/commands"
+        "${project_dir}/reference-docs/standards"
+        "${project_dir}/reference-docs/instructions"
+        "${project_dir}/reference-docs/chatmodes"
+    )
+    
+    for dir in "${required_dirs[@]}"; do
+        if [ ! -d "$dir" ]; then
+            echo "⚠️ Warning: Required directory not found: $dir"
+        fi
+    done
+    
+    return 0
+}
+
 # Main setup function called by projectai.sh
-ide_setup() {
-    # Create Cursor instruction file
-    if ! create_cursor_instruction_file; then
+setup_ide_environment() {
+    local project_dir="$1"
+    shift
+    local project_types=("$@")
+    
+    echo "🔧 Setting up Cursor IDE environment..."
+    
+    # Generate .cursorrules with proper configurations
+    if ! generate_cursor_rules "$project_dir"; then
+        echo "❌ Error: Failed to generate .cursorrules"
         return 1
     fi
+    
+    # Set up command and prompt integration
+    if ! setup_cursor_integrations "$project_dir"; then
+        echo "⚠️ Warning: Integration setup incomplete"
+    fi
+    
+    echo "✅ Cursor IDE environment setup complete"
+    return 0
     
     # Report success
     echo "✓ Cursor IDE setup completed successfully"

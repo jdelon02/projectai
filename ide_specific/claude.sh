@@ -3,14 +3,94 @@
 # Claude IDE specific instruction file generator
 # This file contains the logic for creating CLAUDE.md instruction files
 
-# Main setup function called by projectai.sh
-ide_setup() {
-    local project_types_display
-    if [ ${#ALL_PROJECT_TYPES[@]} -eq 1 ]; then
-        project_types_display="$PRIMARY_PROJECT_TYPE"
-    else
-        project_types_display="$PRIMARY_PROJECT_TYPE (+ ${ADDITIONAL_PROJECT_TYPES[*]})"
+# Function to generate CLAUDE.md with proper references
+generate_claude_md() {
+    local project_dir="$1"
+    local claude_file="${project_dir}/CLAUDE.md"
+    
+    cat > "$claude_file" << 'EOF'
+# Claude Code Instructions
+
+This project uses Agent OS for structured development. All commands and prompts are available in the reference-docs directory.
+
+## Command Organization
+
+Commands are organized in the following directories:
+- **Common Commands** (`./reference-docs/commands/common/`):
+  - General development workflows
+  - Source control operations
+  - File and directory management
+  - Build and test runners
+
+- **Project-Specific Commands** (`./reference-docs/commands/project-specific/`):
+  - Framework-specific commands
+  - Language-specific operations
+  - Project type tooling commands
+  - Custom build and deployment scripts
+
+## Prompt Organization
+
+Prompts are organized in the following directories:
+- **Common Prompts** (`./reference-docs/prompts/common/`):
+  - Development workflow prompts
+  - Code review templates
+  - Documentation templates
+  - Testing guidelines
+
+- **Project-Specific Prompts** (`./reference-docs/prompts/project-specific/`):
+  - Framework-specific templates
+  - Language-specific guides
+  - Project type conventions
+  - Custom workflow templates
+
+## Project Standards
+
+Project standards and documentation can be found in:
+- ./reference-docs/standards/
+- ./reference-docs/instructions/
+
+## Additional Resources
+
+- Chatmodes: ./reference-docs/chatmodes/
+- Project-specific documentation: Check respective project type directories in reference-docs/
+EOF
+}
+
+# Function to set up Claude command integration
+setup_claude_commands() {
+    local project_dir="$1"
+    local commands_dir="${project_dir}/reference-docs/commands"
+    
+    # Verify commands directory exists
+    if [ ! -d "$commands_dir" ]; then
+        echo "⚠️ Warning: Commands directory not found at: $commands_dir"
+        return 1
     fi
+    
+    return 0
+}
+
+# Main setup function called by projectai.sh
+setup_ide_environment() {
+    local project_dir="$1"
+    shift
+    local project_types=("$@")
+    
+    echo "🔧 Setting up Claude Code environment..."
+    
+    # Generate CLAUDE.md with proper references
+    if ! generate_claude_md "$project_dir"; then
+        echo "❌ Error: Failed to generate CLAUDE.md"
+        return 1
+    fi
+    
+    # Configure command and prompt integration
+    if ! setup_claude_commands "$project_dir"; then
+        echo "⚠️ Warning: Command integration setup incomplete"
+    fi
+    
+    echo "✅ Claude Code environment setup complete"
+    return 0
 
     # Create Claude instruction file
     if ! create_claude_instruction_file "$project_types_display"; then

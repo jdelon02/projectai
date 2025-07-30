@@ -4,14 +4,86 @@
 # This file contains the logic for creating .github/instructions/main.instructions.md files
 # and handling VS Code workspace files
 
-# Main setup function called by projectai.sh
-ide_setup() {
-    local project_types_display
-    if [ ${#ALL_PROJECT_TYPES[@]} -eq 1 ]; then
-        project_types_display="$PRIMARY_PROJECT_TYPE"
-    else
-        project_types_display="$PRIMARY_PROJECT_TYPE (+ ${ADDITIONAL_PROJECT_TYPES[*]})"
+# Function to configure VS Code settings
+configure_vscode_workspace() {
+    local project_dir="$1"
+    local settings_dir="${project_dir}/.vscode"
+    local settings_file="${settings_dir}/settings.json"
+    
+    # Create .vscode directory if it doesn't exist
+    mkdir -p "$settings_dir"
+    
+    # Initialize settings.json if it doesn't exist
+    if [ ! -f "$settings_file" ]; then
+        echo "{}" > "$settings_file"
     fi
+    
+    # Add or update GitHub Copilot and command settings
+    cat > "$settings_file" << 'EOF'
+{
+    "github.copilot.enable": true,
+    "github.copilot.advanced": {
+        "referenceFiles": [
+            "reference-docs/**/*.md",
+            "reference-docs/**/*.txt"
+        ]
+    },
+    "agentOS.commands.paths": {
+        "common": "reference-docs/commands/common",
+        "projectSpecific": "reference-docs/commands/project-specific"
+    },
+    "agentOS.prompts.paths": {
+        "common": "reference-docs/prompts/common",
+        "projectSpecific": "reference-docs/prompts/project-specific"
+    }
+}
+EOF
+}
+
+# Function to set up VS Code command integration
+setup_vscode_commands() {
+    local project_dir="$1"
+    local commands_dir="${project_dir}/reference-docs/commands"
+    
+    # Check if commands directory exists
+    if [ ! -d "$commands_dir" ]; then
+        echo "⚠️ Warning: Commands directory not found at: $commands_dir"
+        return 1
+    fi
+    
+    return 0
+}
+
+# Main setup function called by projectai.sh
+setup_ide_environment() {
+    local project_dir="$1"
+    shift
+    local project_types=("$@")
+    
+    echo "🔧 Setting up VS Code environment..."
+    
+    # Create .github directory if it doesn't exist
+    mkdir -p "${project_dir}/.github"
+    
+    # Create symlink for prompts
+    if ! ln -sf "${project_dir}/reference-docs/prompts" "${project_dir}/.github/prompts"; then
+        echo "❌ Error: Failed to create prompts symlink"
+        return 1
+    fi
+    
+    # Configure command integration
+    if ! setup_vscode_commands "$project_dir"; then
+        echo "⚠️ Warning: Command integration setup incomplete"
+    fi
+    
+    # Update workspace settings
+    if ! configure_vscode_workspace "$project_dir"; then
+        echo "❌ Error: Failed to configure VS Code workspace"
+        return 1
+    fi
+    
+    echo "✅ VS Code environment setup complete"
+    return 0
 
     # Create instruction files
     create_vscode_instruction_file "$project_types_display" || return 1
