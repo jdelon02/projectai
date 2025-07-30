@@ -13,11 +13,44 @@ set -e
 # Array to track exported variables for cleanup
 EXPORTED_VARS=()
 
+# Array to track temporary files for cleanup
+TEMP_FILES=()
+
+# Function to cleanup temporary IDE script
+cleanup_temp_script() {
+    local temp_script="$1"
+    if [ -f "$temp_script" ]; then
+        echo "  🗑️  Cleaning up temporary IDE script: $temp_script"
+        rm -f "$temp_script"
+    fi
+}
+
+# Function to cleanup temporary template directory
+cleanup_temp_dir() {
+    local temp_dir="$1"
+    if [ -d "$temp_dir" ]; then
+        echo "🗑️  Cleaning up temporary template directory: $temp_dir"
+        rm -rf "$temp_dir"
+    fi
+}
+
 # Function to cleanup environment and temporary files
 cleanup_environment() {
     local exit_code=$?
     
     echo "🧹 Cleaning up environment..."
+    
+    # Clean up tracked temporary files
+    if [ ${#TEMP_FILES[@]} -gt 0 ]; then
+        echo "  🗑️  Cleaning up tracked temporary files..."
+        for temp_file in "${TEMP_FILES[@]}"; do
+            if [ -e "$temp_file" ]; then
+                echo "    ✓ Removing $temp_file"
+                rm -rf "$temp_file" 2>/dev/null || true
+            fi
+        done
+        echo "  ✓ Tracked temporary files cleaned up"
+    fi
     
     # Unset exported variables
     if [ ${#EXPORTED_VARS[@]} -gt 0 ]; then
@@ -69,7 +102,9 @@ handle_error() {
 if [ "$#" -lt 1 ]; then
     echo "Error: Missing project type argument(s)"
     echo "Usage: projectai <primary_project_type> [additional_project_types...]"
+    echo "       projectai none  # Skip Agent OS symlinks, only create IDE configs and templates"
     echo "Example: projectai drupal php mysql css javascript lando"
+    echo "Example: projectai none  # Create project structure without Agent OS dependencies"
     exit 1
 fi
 
@@ -91,6 +126,11 @@ if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
     echo "  projectai drupal,php,mysql,css,javascript,lando"
     echo "  projectai react typescript tailwind"
     echo "  projectai python fastapi postgresql"
+    echo "  projectai none  # Skip Agent OS setup, only create IDE configs and templates"
+    echo ""
+    echo "Special Arguments:"
+    echo "  none             Skip Agent OS symlinks and validation"
+    echo "                   Creates IDE configuration and templates only"
     echo ""
     echo "Prerequisites:"
     echo "  - Agent OS must be installed first"
@@ -325,35 +365,50 @@ create_project_type_symlinks() {
 
 # Parse input and set variables only if they don't exist
 if [ -z "${PRIMARY_PROJECT_TYPE+x}" ] || [ -z "${ADDITIONAL_PROJECT_TYPES+x}" ]; then
-    # Handle both comma-separated and space-separated arguments
-    ALL_TYPES=()
-    
-    # Check if first argument contains commas (comma-separated format)
-    if [[ "$1" == *","* ]]; then
-        # Parse comma-separated input
-        IFS=',' read -r -a ALL_TYPES <<< "$1"
-    else
-        # Parse space-separated arguments (all command line arguments)
-        ALL_TYPES=("$@")
-    fi
-    
-    # Set primary type if not set
-    if [ -z "${PRIMARY_PROJECT_TYPE+x}" ]; then
-        PRIMARY_PROJECT_TYPE=$(echo "${ALL_TYPES[0]}" | tr '[:upper:]' '[:lower:]')
-    fi
-    
-    # Set additional types if not set
-    if [ -z "${ADDITIONAL_PROJECT_TYPES+x}" ]; then
+    # Check for special "none" argument
+    if [[ "${1,,}" == "none" ]]; then
+        echo "🚫 'none' mode selected - skipping Agent OS symlinks and validation"
+        SKIP_AGENT_OS=true
+        PRIMARY_PROJECT_TYPE="generic"
         ADDITIONAL_PROJECT_TYPES=()
-        for ((i=1; i<${#ALL_TYPES[@]}; i++)); do
-            ADDITIONAL_PROJECT_TYPES+=("$(echo "${ALL_TYPES[$i]}" | tr '[:upper:]' '[:lower:]')")
-        done
+        ALL_PROJECT_TYPES=("generic")
+    else
+        # Handle both comma-separated and space-separated arguments
+        ALL_TYPES=()
+        
+        # Check if first argument contains commas (comma-separated format)
+        if [[ "$1" == *","* ]]; then
+            # Parse comma-separated input
+            IFS=',' read -r -a ALL_TYPES <<< "$1"
+        else
+            # Parse space-separated arguments (all command line arguments)
+            ALL_TYPES=("$@")
+        fi
+        
+        # Set primary type if not set
+        if [ -z "${PRIMARY_PROJECT_TYPE+x}" ]; then
+            PRIMARY_PROJECT_TYPE=$(echo "${ALL_TYPES[0]}" | tr '[:upper:]' '[:lower:]')
+        fi
+        
+        # Set additional types if not set
+        if [ -z "${ADDITIONAL_PROJECT_TYPES+x}" ]; then
+            ADDITIONAL_PROJECT_TYPES=()
+            for ((i=1; i<${#ALL_TYPES[@]}; i++)); do
+                ADDITIONAL_PROJECT_TYPES+=("$(echo "${ALL_TYPES[$i]}" | tr '[:upper:]' '[:lower:]')")
+            done
+        fi
+        
+        SKIP_AGENT_OS=false
     fi
 fi
 
 # Set derived variables only if they don't exist
 if [ -z "${ALL_PROJECT_TYPES+x}" ]; then
-    ALL_PROJECT_TYPES=("$PRIMARY_PROJECT_TYPE" "${ADDITIONAL_PROJECT_TYPES[@]}")
+    if [ "$SKIP_AGENT_OS" = true ]; then
+        ALL_PROJECT_TYPES=("generic")
+    else
+        ALL_PROJECT_TYPES=("$PRIMARY_PROJECT_TYPE" "${ADDITIONAL_PROJECT_TYPES[@]}")
+    fi
 fi
 
 if [ -z "${FULL_PATH+x}" ]; then
@@ -515,14 +570,8 @@ create_instruction_file() {
         return 1
     }
 
-    # Set up cleanup for this temp script
-    cleanup_temp_script() {
-        if [ -f "$temp_script" ]; then
-            echo "  🗑️  Cleaning up temporary IDE script: $temp_script"
-            rm -f "$temp_script"
-        fi
-    }
-    trap cleanup_temp_script EXIT
+    # Add to tracked temporary files for cleanup
+    TEMP_FILES+=("$temp_script")
 
     # Make it executable
     chmod +x "$temp_script"
@@ -538,6 +587,9 @@ create_instruction_file() {
         handle_error "IDE setup script failed"
         return 1
     fi
+    
+    # Clean up the temp script immediately after use
+    cleanup_temp_script "$temp_script"
     
     echo "  ✓ IDE script executed successfully"
     return 0
@@ -566,14 +618,8 @@ copy_and_replace() {
         return 1
     }
     
-    # Set up cleanup for this function's temp directory
-    cleanup_temp_dir() {
-        if [ -d "$temp_dir" ]; then
-            echo "🗑️  Cleaning up temporary template directory: $temp_dir"
-            rm -rf "$temp_dir"
-        fi
-    }
-    trap cleanup_temp_dir EXIT
+    # Add to tracked temporary files for cleanup
+    TEMP_FILES+=("$temp_dir")
     
     # Use GitHub API to list repository contents
     echo "📂 Fetching template directory structure..."
@@ -696,6 +742,7 @@ copy_and_replace() {
     done
     
     echo "🔄 Cleaning up temporary files..."
+    cleanup_temp_dir "$temp_dir"
     echo "📊 Summary: $success_count directories processed successfully, $error_count failed"
     
     # Return success if at least some directories were processed
@@ -705,25 +752,32 @@ copy_and_replace() {
 # Main script logic
 main() {
     echo "🚀 Project AI initialization..."
-    echo "Primary Project Type: $PRIMARY_PROJECT_TYPE"
-    if [ ${#ADDITIONAL_PROJECT_TYPES[@]} -gt 0 ]; then
-        echo "Additional Project Types: ${ADDITIONAL_PROJECT_TYPES[*]}"
+    
+    if [ "$SKIP_AGENT_OS" = true ]; then
+        echo "🚫 Running in 'none' mode - skipping Agent OS setup"
+        echo "Directory Name: $DIRECTORY"
+        echo "Full Path: $FULL_PATH"
+    else
+        echo "Primary Project Type: $PRIMARY_PROJECT_TYPE"
+        if [ ${#ADDITIONAL_PROJECT_TYPES[@]} -gt 0 ]; then
+            echo "Additional Project Types: ${ADDITIONAL_PROJECT_TYPES[*]}"
+        fi
+        echo "Directory Name: $DIRECTORY"
+        echo "Full Path: $FULL_PATH"
+        
+        # Validate Agent OS directories exist
+        if ! validate_agent_os_directories; then
+            return 1
+        fi
+        
+        # Create Agent OS symlinks BEFORE IDE setup
+        echo "🔗 Setting up Agent OS reference documentation..."
+        create_global_symlinks "$FULL_PATH"
+        create_project_type_symlinks "$FULL_PATH" "${ALL_PROJECT_TYPES[@]}"
+        
+        # Update .gitignore to exclude symlinked directories
+        update_gitignore_for_agent_os "$FULL_PATH"
     fi
-    echo "Directory Name: $DIRECTORY"
-    echo "Full Path: $FULL_PATH"
-    
-    # Validate Agent OS directories exist
-    if ! validate_agent_os_directories; then
-        return 1
-    fi
-    
-    # Create Agent OS symlinks BEFORE IDE setup
-    echo "🔗 Setting up Agent OS reference documentation..."
-    create_global_symlinks "$FULL_PATH"
-    create_project_type_symlinks "$FULL_PATH" "${ALL_PROJECT_TYPES[@]}"
-    
-    # Update .gitignore to exclude symlinked directories
-    update_gitignore_for_agent_os "$FULL_PATH"
     
     # Prompt user for IDE selection
     prompt_ide_selection
@@ -745,9 +799,15 @@ main() {
         else
             echo "📁 Created IDE-specific instruction file for $IDE_TYPE"
         fi
-        echo "🎯 Referenced ${#ALL_PROJECT_TYPES[@]} project type(s): ${ALL_PROJECT_TYPES[*]}"
+        
+        if [ "$SKIP_AGENT_OS" = true ]; then
+            echo "🚫 Skipped Agent OS symlinks as requested ('none' mode)"
+            echo "📁 Created IDE configuration and templates only"
+        else
+            echo "🎯 Referenced ${#ALL_PROJECT_TYPES[@]} project type(s): ${ALL_PROJECT_TYPES[*]}"
+            echo "🚫 Updated .gitignore to exclude Agent OS symlinks from version control."
+        fi
         echo "📂 Template files have been copied and customized."
-        echo "🚫 Updated .gitignore to exclude Agent OS symlinks from version control."
         echo "🎉 Project setup completed successfully!"
         return 0
     else
@@ -757,9 +817,14 @@ main() {
         else
             echo "📁 IDE-specific instruction file was created successfully."
         fi
-        echo "🎯 Referenced ${#ALL_PROJECT_TYPES[@]} project type(s): ${ALL_PROJECT_TYPES[*]}"
+        
+        if [ "$SKIP_AGENT_OS" = true ]; then
+            echo "🚫 Skipped Agent OS symlinks as requested ('none' mode)"
+        else
+            echo "🎯 Referenced ${#ALL_PROJECT_TYPES[@]} project type(s): ${ALL_PROJECT_TYPES[*]}"
+            echo "🚫 Updated .gitignore to exclude Agent OS symlinks from version control."
+        fi
         echo "📂 Please check the logs above for template copying details."
-        echo "🚫 Updated .gitignore to exclude Agent OS symlinks from version control."
         echo "⚠️  Project setup completed with some template errors."
         return 1
     fi
