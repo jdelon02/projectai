@@ -613,9 +613,10 @@ main() {
     if copy_and_replace; then
         echo "✨ Project initialization complete!"
         if [ "$IDE_TYPE" = "vscode" ]; then
-            echo "📁 Created VS Code instruction files:"
+            echo "📁 Created VS Code configuration:"
             echo "   - .github/instructions/main.instructions.md"
             echo "   - .github/copilot-instructions.md (for auto-detection)"
+            echo "   - .vscode/${DIRECTORY}.code-workspace (comprehensive workspace settings)"
         else
             echo "📁 Created IDE-specific instruction file for $IDE_TYPE"
         fi
@@ -625,7 +626,7 @@ main() {
     else
         echo "⚠️  Project initialization completed with some errors."
         if [ "$IDE_TYPE" = "vscode" ]; then
-            echo "📁 VS Code instruction files were created successfully."
+            echo "📁 VS Code configuration was created successfully."
         else
             echo "📁 IDE-specific instruction file was created successfully."
         fi

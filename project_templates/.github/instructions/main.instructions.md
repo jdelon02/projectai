@@ -25,11 +25,16 @@ Please follow the Agent OS methodology:
 3. **Standards Compliance**: Follow the <PROJECTTYPE> standards primarily, with guidance from additional technologies
 4. **Modular Design**: Maintain separation of concerns and clean architecture
 
+# Agent OS Integration Instructions
 
+## Commands
+Refer to commands in the ../commands/ directory for available Agent OS commands.
 
-## Agent OS Workflows
+## Prompts  
+Use prompts from ../prompts/ for specific conversation patterns.
 
-
+## Chat Modes
+Reference chat modes in ../chatmodes/ for different interaction styles.
 
 ## Important Notes
 

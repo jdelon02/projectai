@@ -76,29 +76,13 @@ create_copilot_autodetect() {
 configure_vscode_workspace() {
     local project_dir="$1"
     local settings_dir="${project_dir}/.vscode"
-    local settings_file="${settings_dir}/settings.json"
     local workspace_file="${settings_dir}/${DIRECTORY}.code-workspace"
-    local settings_template_url="${BASE_URL}/project_templates/.vscode/settings.json"
     local workspace_template_url="${BASE_URL}/project_templates/.vscode/template.code-workspace"
     
     # Create .vscode directory if it doesn't exist
     mkdir -p "$settings_dir"
     
-    # Download and customize settings.json template
-    if curl -sSL --fail "$settings_template_url" -o "$settings_file" 2>/dev/null; then
-        # Apply template substitutions
-        sed -i '' \
-            -e "s/<PROJECTTYPE>/$PRIMARY_PROJECT_TYPE/g" \
-            -e "s/<DIRECTORY_NAME>/$DIRECTORY/g" \
-            "$settings_file" 2>/dev/null
-        
-        echo "    ✓ Created .vscode/settings.json from template"
-    else
-        echo "    ❌ Failed to download settings template from ${settings_template_url}"
-        return 1
-    fi
-    
-    # Download and customize workspace file template
+    # Download and customize workspace file template (contains all settings)
     if curl -sSL --fail "$workspace_template_url" -o "$workspace_file" 2>/dev/null; then
         # Apply template substitutions using exported string variables
         sed -i '' \
@@ -108,7 +92,7 @@ configure_vscode_workspace() {
             -e "s/<ALL_TYPES>/$ALL_PROJECT_TYPES_STR/g" \
             "$workspace_file" 2>/dev/null
         
-        echo "    ✓ Created .vscode/${DIRECTORY}.code-workspace from template"
+        echo "    ✓ Created .vscode/${DIRECTORY}.code-workspace (contains all VS Code configuration)"
     else
         echo "    ❌ Failed to download workspace template from ${workspace_template_url}"
         return 1
