@@ -272,9 +272,6 @@ if [ -z "${FULL_PATH+x}" ]; then
     FULL_PATH="$(pwd)"
 fi
 
-# Create ide_specific directory in the script's location
-mkdir -p "$SCRIPT_DIR/ide_specific"
-
 # Function to prompt user for IDE selection
 prompt_ide_selection() {
     echo ""
@@ -396,41 +393,10 @@ validate_agent_os_directories() {
 
 # Function to create IDE-specific instruction file
 create_instruction_file() {
-    echo "📝 Creating IDE-specific instruction file..."
+    echo "📝 Setting up IDE-specific configuration..."
     
-    # Set up local paths and GitHub URLs
-    local ide_script="$SCRIPT_DIR/ide_specific/${IDE_TYPE}.sh"
+    # Set up GitHub URL for IDE script
     local ide_script_url="${BASE_URL}/ide_specific/${IDE_TYPE}.sh"
-    local temp_script
-    
-    # Try to create ide_specific directory if it doesn't exist
-    mkdir -p "$SCRIPT_DIR/ide_specific"
-    
-    # If local script doesn't exist, try to fetch from GitHub
-    if [ ! -f "$ide_script" ]; then
-        echo "  ⬇️ Fetching IDE script from GitHub..."
-        temp_script=$(mktemp) || {
-            handle_error "Failed to create temporary file"
-            return 1
-        }
-        
-        # Download the script
-        if ! curl -s --fail -o "$temp_script" "$ide_script_url"; then
-            rm -f "$temp_script"
-            handle_error "Failed to download IDE script from $ide_script_url"
-            return 1
-        fi
-        
-        # Move to final location
-        if ! mv "$temp_script" "$ide_script"; then
-            rm -f "$temp_script"
-            handle_error "Failed to install IDE script to $ide_script"
-            return 1
-        fi
-        
-        # Make executable
-        chmod +x "$ide_script"
-    fi
     
     # Export variables needed by IDE scripts
     export PRIMARY_PROJECT_TYPE
@@ -441,14 +407,13 @@ create_instruction_file() {
     export BASE_URL
     export SCRIPT_DIR
     
-    # Source the IDE-specific script and run its setup function
-    source "$ide_script"
+    echo "  🔧 Running IDE-specific setup for ${IDE_TYPE} in ${FULL_PATH}..."
     
-    # Execute IDE-specific setup
-    if ! ide_setup; then
-        handle_error "IDE setup failed"
+    # Change to the project directory and execute the IDE script from GitHub
+    (cd "${FULL_PATH}" && if ! curl -sSL "$ide_script_url" | bash; then
+        handle_error "IDE setup script failed"
         return 1
-    fi
+    fi)
     
     return 0
 }
