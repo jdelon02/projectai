@@ -2,4 +2,4 @@
 
 For complete instructions, see: [Main Instructions](instructions/main.instructions.md)
 
-This is a **bash** project using Agent OS structured development workflows.
+This is a **laravel** project using Agent OS structured development workflows.

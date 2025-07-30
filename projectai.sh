@@ -430,41 +430,37 @@ check_curl() {
     return 0
 }
 # Create IDE-specific instruction file based on IDE type
-case "$IDE_TYPE" in
-    "claude")
-        # Load and execute Claude Code specific setup
-        source "$SCRIPT_DIR/ide_specific/claude.sh"
-        if ! ide_setup; then
-            handle_error "Claude Code setup failed"
-            return 1
-        fi
-        ;;
-        
-    "vscode")
-        # Load and execute VS Code specific setup
-        source "$SCRIPT_DIR/ide_specific/vscode.sh"
-        if ! ide_setup; then
-            handle_error "VS Code setup failed"
-            return 1
-        fi
-        ;;
-        
-    "cursor")
-        # Load and execute Cursor IDE specific setup
-        source "$SCRIPT_DIR/ide_specific/cursor.sh"
-        if ! ide_setup; then
-            handle_error "Cursor IDE setup failed"
-            return 1
-        fi
-        ;;
-        
-    *)
-        handle_error "Unknown IDE type: $IDE_TYPE"
-        return 1
-        ;;
-esac
+create_instruction_file() {
+    echo "📝 Creating IDE-specific instruction file..."
 
-return 0
+    # Load and execute IDE-specific script
+    local ide_script="$SCRIPT_DIR/ide_specific/${IDE_TYPE}.sh"
+    
+    if [ ! -f "$ide_script" ]; then
+        handle_error "IDE script not found: ${ide_script}"
+        return 1
+    fi
+    
+    # Export variables needed by IDE scripts
+    export PRIMARY_PROJECT_TYPE
+    export ADDITIONAL_PROJECT_TYPES
+    export ALL_PROJECT_TYPES
+    export FULL_PATH
+    export DIRECTORY
+    export BASE_URL
+    export SCRIPT_DIR
+    
+    # Source the IDE-specific script and run its setup function
+    source "$ide_script"
+    
+    # Execute IDE-specific setup
+    if ! ide_setup; then
+        handle_error "IDE setup failed"
+        return 1
+    fi
+    
+    return 0
+}
 
 # Function to copy templates and perform replacements
 copy_and_replace() {

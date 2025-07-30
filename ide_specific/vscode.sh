@@ -4,6 +4,70 @@
 # This file contains the logic for creating .github/instructions/main.instructions.md files
 # and handling VS Code workspace files
 
+# Function to set up VS Code IDE environment
+ide_setup() {
+    echo "🔧 Setting up VS Code environment..."
+    
+    # Create .github/instructions directory
+    mkdir -p "${FULL_PATH}/.github/instructions"
+    
+    # Create main instructions file
+    local instructions_file="${FULL_PATH}/.github/instructions/main.instructions.md"
+    local copilot_file="${FULL_PATH}/.github/copilot-instructions.md"
+    
+    # Create both files with appropriate content
+    create_vscode_instructions "$instructions_file"
+    create_copilot_autodetect "$copilot_file"
+    
+    # Configure VS Code workspace settings
+    configure_vscode_workspace "${FULL_PATH}"
+    
+    return 0
+}
+
+# Function to create VS Code instructions file
+create_vscode_instructions() {
+    local file="$1"
+    
+    cat > "$file" << EOF
+# GitHub Copilot Instructions
+
+> Agent OS Project Instructions
+> Primary Project Type: ${PRIMARY_PROJECT_TYPE}
+> Additional Types: ${ADDITIONAL_PROJECT_TYPES[*]}
+> Directory: ${DIRECTORY}
+> Generated: $(date +"%Y-%m-%d")
+
+## Project Context
+
+This is a **${PRIMARY_PROJECT_TYPE}** project with additional technologies (${ADDITIONAL_PROJECT_TYPES[*]}) using Agent OS structured development workflows.
+
+## Development Guidelines
+
+Please follow the Agent OS methodology:
+
+1. **Plan First**: Always understand the full scope before coding
+2. **Spec-Driven**: Create detailed specifications for complex features
+3. **Standards Compliance**: Follow the ${PRIMARY_PROJECT_TYPE} standards primarily
+4. **Modular Design**: Maintain separation of concerns and clean architecture
+
+For more information, see the complete standards in reference-docs/.
+EOF
+}
+
+# Function to create Copilot auto-detect file
+create_copilot_autodetect() {
+    local file="$1"
+    
+    cat > "$file" << EOF
+# GitHub Copilot Instructions
+
+For complete instructions, see: [Main Instructions](instructions/main.instructions.md)
+
+This is a **${PRIMARY_PROJECT_TYPE}** project using Agent OS structured development workflows.
+EOF
+}
+
 # Function to configure VS Code settings
 configure_vscode_workspace() {
     local project_dir="$1"
