@@ -526,43 +526,43 @@ copy_and_replace() {
             fi
         done < <(echo "$dir_contents")
             
-            local file_success=0
-            for template_file in "${files[@]}"; do
-                local target_file="$template_file"
-                local target_path="${target_dir}/${target_file}"
-                local raw_url="${BASE_URL}/project_templates/${template_dir}/${template_file}"
-                
-                echo "  ⬇️  Downloading ${template_file}..."
-                if curl -sSL --fail -o "$target_path" "$raw_url"; then
-                    if [ -f "$target_path" ]; then
-                        # Create replacement strings for multiple project types
-                        local additional_types_str="${ADDITIONAL_PROJECT_TYPES[*]}"
-                        local all_types_str="${ALL_PROJECT_TYPES[*]}"
-                        
-                        if sed -i '' \
-                            -e "s/<PROJECTTYPE>/$PRIMARY_PROJECT_TYPE/g" \
-                            -e "s/<DIRECTORY_NAME>/$DIRECTORY/g" \
-                            -e "s/<ADDITIONAL_TYPES>/$additional_types_str/g" \
-                            -e "s/<ALL_TYPES>/$all_types_str/g" \
-                            "$target_path" 2>/dev/null; then
-                            echo "    ✓ Created and customized ${target_file}"
-                            ((file_success++))
-                        else
-                            echo "    ⚠️  Failed to customize ${target_file}"
-                            rm -f "$target_path"
-                        fi
-                    fi
-                else
-                    echo "    ⚠️  Failed to download ${template_file}"
-                fi
-            done
+        local file_success=0
+        for template_file in "${files[@]}"; do
+            local target_file="$template_file"
+            local target_path="${target_dir}/${target_file}"
+            local raw_url="${BASE_URL}/project_templates/${template_dir}/${template_file}"
             
-            if [ $file_success -gt 0 ]; then
-                ((success_count++))
+            echo "  ⬇️  Downloading ${template_file}..."
+            if curl -sSL --fail -o "$target_path" "$raw_url"; then
+                if [ -f "$target_path" ]; then
+                    # Create replacement strings for multiple project types
+                    local additional_types_str="${ADDITIONAL_PROJECT_TYPES[*]}"
+                    local all_types_str="${ALL_PROJECT_TYPES[*]}"
+                    
+                    if sed -i '' \
+                        -e "s/<PROJECTTYPE>/$PRIMARY_PROJECT_TYPE/g" \
+                        -e "s/<DIRECTORY_NAME>/$DIRECTORY/g" \
+                        -e "s/<ADDITIONAL_TYPES>/$additional_types_str/g" \
+                        -e "s/<ALL_TYPES>/$all_types_str/g" \
+                        "$target_path" 2>/dev/null; then
+                        echo "    ✓ Created and customized ${target_file}"
+                        ((file_success++))
+                    else
+                        echo "    ⚠️  Failed to customize ${target_file}"
+                        rm -f "$target_path"
+                    fi
+                fi
             else
-                ((error_count++))
-                rm -rf "$target_dir"
+                echo "    ⚠️  Failed to download ${template_file}"
             fi
+        done
+        
+        if [ $file_success -gt 0 ]; then
+            ((success_count++))
+        else
+            ((error_count++))
+            rm -rf "$target_dir"
+        fi
     done
     
     echo "🔄 Cleaning up temporary files..."
