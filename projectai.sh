@@ -563,11 +563,6 @@ copy_and_replace() {
                 ((error_count++))
                 rm -rf "$target_dir"
             fi
-        else
-            echo "  ⚠️  Failed to access ${template_dir}, skipping..."
-            rm -rf "$target_dir"
-            ((error_count++))
-        fi
     done
     
     echo "🔄 Cleaning up temporary files..."
