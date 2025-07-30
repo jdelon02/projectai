@@ -11,27 +11,8 @@
 set -e
 
 # Function to handle errors gracefully
-handle_error(    # If local script doesn't exist, try to fetch from GitHub
-    if [ ! -f "$ide_script" ]; then
-        echo "  ⬇️ Fetching IDE script from GitHub..."
-        temp_script=$(mktemp) || {
-            handle_error "Failed to create temporary file"
-            return 1
-        }
-        
-        # First verify the URL is accessible
-        if ! curl -L --output /dev/null --silent --head --fail "$ide_script_url"; then
-            rm -f "$temp_script"
-            handle_error "IDE script not found at $ide_script_url"
-            return 1
-        fi
-        
-        # Download the script
-        if ! curl -L -s --fail --output "$temp_script" "$ide_script_url"; then
-            rm -f "$temp_script"
-            handle_error "Failed to download IDE script from $ide_script_url"
-            return 1
-        }error_message="$1"
+handle_error() {
+    local error_message="$1"
     echo "❌ Error: $error_message"
     return 1
 }
@@ -411,13 +392,6 @@ validate_agent_os_directories() {
     
     echo ""
     return 0
-}
-
-# Function to handle errors gracefully
-handle_error() {
-    local error_message="$1"
-    echo "❌ Error: $error_message"
-    return 1
 }
 
 # Function to create IDE-specific instruction file
