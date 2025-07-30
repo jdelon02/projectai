@@ -10,26 +10,34 @@
 # Exit on error
 set -e
 
-# Check if we have the required arguments    if [ ! -s "$ide_script" ]; then
-    echo "  ⬇️ Fetching IDE script from GitHub..."
-    temp_script=$(mktemp) || {
-        handle_error "Failed to create temporary file"
-        return 1
-    }
-    
-    # First check if the GitHub URL is accessible
-    if ! curl --output /dev/null --silent --head --fail "$ide_script_url"; then
-        rm -f "$temp_script"
-        handle_error "IDE script not found at $ide_script_url"
-        return 1
-    fi
-    
-    # Download the script
-    if ! curl -s --fail -o "$temp_script" "$ide_script_url"; then
-        rm -f "$temp_script"
-        handle_error "Failed to download IDE script from $ide_script_url"
-        return 1
-    fi
+# Function to handle errors gracefully
+handle_error(    # If local script doesn't exist, try to fetch from GitHub
+    if [ ! -f "$ide_script" ]; then
+        echo "  ⬇️ Fetching IDE script from GitHub..."
+        temp_script=$(mktemp) || {
+            handle_error "Failed to create temporary file"
+            return 1
+        }
+        
+        # First verify the URL is accessible
+        if ! curl -L --output /dev/null --silent --head --fail "$ide_script_url"; then
+            rm -f "$temp_script"
+            handle_error "IDE script not found at $ide_script_url"
+            return 1
+        fi
+        
+        # Download the script
+        if ! curl -L -s --fail --output "$temp_script" "$ide_script_url"; then
+            rm -f "$temp_script"
+            handle_error "Failed to download IDE script from $ide_script_url"
+            return 1
+        }error_message="$1"
+    echo "❌ Error: $error_message"
+    return 1
+}
+
+# Check if we have the required arguments
+if [ "$#" -lt 1 ]; then
     echo "Error: Missing project type argument(s)"
     echo "Usage: projectai <primary_project_type> [additional_project_types...]"
     echo "Example: projectai drupal php mysql css javascript lando"
@@ -275,10 +283,15 @@ fi
 # Base URL for raw GitHub content
 BASE_URL="https://raw.githubusercontent.com/jdelon02/projectai/main"
 
-# Get the directory where this script is located and ensure it's the project root
-SCRIPT_DIR="$FULL_PATH"
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Create necessary project directories
+# Set project root to current directory
+if [ -z "${FULL_PATH+x}" ]; then
+    FULL_PATH="$(pwd)"
+fi
+
+# Create ide_specific directory in the script's location
 mkdir -p "$SCRIPT_DIR/ide_specific"
 
 # Function to prompt user for IDE selection
