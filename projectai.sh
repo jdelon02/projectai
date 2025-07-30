@@ -10,8 +10,26 @@
 # Exit on error
 set -e
 
-# Check if we have the required arguments
-if [ "$#" -lt 1 ]; then
+# Check if we have the required arguments    if [ ! -s "$ide_script" ]; then
+        echo "  ⬇️ Fetching IDE script from GitHub..."
+        temp_script=$(mktemp) || {
+            handle_error "Failed to create temporary file"
+            return 1
+        }
+        
+        # First check if the GitHub URL is accessible
+        if ! curl --output /dev/null --silent --head --fail "$ide_script_url"; then
+            rm -f "$temp_script"
+            handle_error "IDE script not found at $ide_script_url"
+            return 1
+        }
+        
+        # Download the script
+        if ! curl -s --fail -o "$temp_script" "$ide_script_url"; then
+            rm -f "$temp_script"
+            handle_error "Failed to download IDE script from $ide_script_url"
+            return 1
+        }t 1 ]; then
     echo "Error: Missing project type argument(s)"
     echo "Usage: projectai <primary_project_type> [additional_project_types...]"
     echo "Example: projectai drupal php mysql css javascript lando"
@@ -255,10 +273,13 @@ if [ -z "${DIRECTORY+x}" ]; then
 fi
 
 # Base URL for raw GitHub content
-BASE_URL="https://raw.githubusercontent.com/jdelon02/agent-os/main"
+BASE_URL="https://raw.githubusercontent.com/jdelon02/projectai/main"
 
-# Get the directory where this script is located
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Get the directory where this script is located and ensure it's the project root
+SCRIPT_DIR="$FULL_PATH"
+
+# Create necessary project directories
+mkdir -p "$SCRIPT_DIR/ide_specific"
 
 # Function to prompt user for IDE selection
 prompt_ide_selection() {
@@ -390,12 +411,38 @@ handle_error() {
 create_instruction_file() {
     echo "📝 Creating IDE-specific instruction file..."
     
-    # Load and execute IDE-specific script
+    # Set up local paths and GitHub URLs
     local ide_script="$SCRIPT_DIR/ide_specific/${IDE_TYPE}.sh"
+    local ide_script_url="${BASE_URL}/ide_specific/${IDE_TYPE}.sh"
+    local temp_script
     
+    # Try to create ide_specific directory if it doesn't exist
+    mkdir -p "$SCRIPT_DIR/ide_specific"
+    
+    # If local script doesn't exist, try to fetch from GitHub
     if [ ! -f "$ide_script" ]; then
-        handle_error "IDE script not found: ${ide_script}"
-        return 1
+        echo "  ⬇️ Fetching IDE script from GitHub..."
+        temp_script=$(mktemp) || {
+            handle_error "Failed to create temporary file"
+            return 1
+        }
+        
+        # Download the script
+        if ! curl -s --fail -o "$temp_script" "$ide_script_url"; then
+            rm -f "$temp_script"
+            handle_error "Failed to download IDE script from $ide_script_url"
+            return 1
+        fi
+        
+        # Move to final location
+        if ! mv "$temp_script" "$ide_script"; then
+            rm -f "$temp_script"
+            handle_error "Failed to install IDE script to $ide_script"
+            return 1
+        fi
+        
+        # Make executable
+        chmod +x "$ide_script"
     fi
     
     # Export variables needed by IDE scripts
@@ -429,38 +476,7 @@ check_curl() {
     fi
     return 0
 }
-# Create IDE-specific instruction file based on IDE type
-create_instruction_file() {
-    echo "📝 Creating IDE-specific instruction file..."
 
-    # Load and execute IDE-specific script
-    local ide_script="$SCRIPT_DIR/ide_specific/${IDE_TYPE}.sh"
-    
-    if [ ! -f "$ide_script" ]; then
-        handle_error "IDE script not found: ${ide_script}"
-        return 1
-    fi
-    
-    # Export variables needed by IDE scripts
-    export PRIMARY_PROJECT_TYPE
-    export ADDITIONAL_PROJECT_TYPES
-    export ALL_PROJECT_TYPES
-    export FULL_PATH
-    export DIRECTORY
-    export BASE_URL
-    export SCRIPT_DIR
-    
-    # Source the IDE-specific script and run its setup function
-    source "$ide_script"
-    
-    # Execute IDE-specific setup
-    if ! ide_setup; then
-        handle_error "IDE setup failed"
-        return 1
-    fi
-    
-    return 0
-}
 
 # Function to copy templates and perform replacements
 copy_and_replace() {
