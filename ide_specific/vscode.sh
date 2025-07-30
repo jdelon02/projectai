@@ -35,15 +35,12 @@ create_vscode_instructions() {
     
     # Download template and apply substitutions
     if curl -sSL --fail "$template_url" -o "$file"; then
-        # Apply template substitutions
-        local additional_types_str="${ADDITIONAL_PROJECT_TYPES[*]}"
-        local all_types_str="${ALL_PROJECT_TYPES[*]}"
-        
+        # Apply template substitutions using exported string variables
         sed -i '' \
             -e "s/<PROJECTTYPE>/$PRIMARY_PROJECT_TYPE/g" \
             -e "s/<DIRECTORY_NAME>/$DIRECTORY/g" \
-            -e "s/<ADDITIONAL_TYPES>/$additional_types_str/g" \
-            -e "s/<ALL_TYPES>/$all_types_str/g" \
+            -e "s/<ADDITIONAL_TYPES>/$ADDITIONAL_PROJECT_TYPES_STR/g" \
+            -e "s/<ALL_TYPES>/$ALL_PROJECT_TYPES_STR/g" \
             "$file" 2>/dev/null
         
         echo "    ✓ Created ${file} from template"
@@ -60,15 +57,12 @@ create_copilot_autodetect() {
     
     # Download template and apply substitutions
     if curl -sSL --fail "$template_url" -o "$file"; then
-        # Apply template substitutions
-        local additional_types_str="${ADDITIONAL_PROJECT_TYPES[*]}"
-        local all_types_str="${ALL_PROJECT_TYPES[*]}"
-        
+        # Apply template substitutions using exported string variables
         sed -i '' \
             -e "s/<PROJECTTYPE>/$PRIMARY_PROJECT_TYPE/g" \
             -e "s/<DIRECTORY_NAME>/$DIRECTORY/g" \
-            -e "s/<ADDITIONAL_TYPES>/$additional_types_str/g" \
-            -e "s/<ALL_TYPES>/$all_types_str/g" \
+            -e "s/<ADDITIONAL_TYPES>/$ADDITIONAL_PROJECT_TYPES_STR/g" \
+            -e "s/<ALL_TYPES>/$ALL_PROJECT_TYPES_STR/g" \
             "$file" 2>/dev/null
         
         echo "    ✓ Created ${file} from template"
@@ -83,13 +77,15 @@ configure_vscode_workspace() {
     local project_dir="$1"
     local settings_dir="${project_dir}/.vscode"
     local settings_file="${settings_dir}/settings.json"
-    local template_url="${BASE_URL}/project_templates/.vscode/settings.json"
+    local workspace_file="${settings_dir}/${DIRECTORY}.code-workspace"
+    local settings_template_url="${BASE_URL}/project_templates/.vscode/settings.json"
+    local workspace_template_url="${BASE_URL}/project_templates/.vscode/template.code-workspace"
     
     # Create .vscode directory if it doesn't exist
     mkdir -p "$settings_dir"
     
-    # Download template and apply substitutions
-    if curl -sSL --fail "$template_url" -o "$settings_file" 2>/dev/null; then
+    # Download and customize settings.json template
+    if curl -sSL --fail "$settings_template_url" -o "$settings_file" 2>/dev/null; then
         # Apply template substitutions
         sed -i '' \
             -e "s/<PROJECTTYPE>/$PRIMARY_PROJECT_TYPE/g" \
@@ -98,7 +94,23 @@ configure_vscode_workspace() {
         
         echo "    ✓ Created .vscode/settings.json from template"
     else
-        echo "    ❌ Failed to download template from ${template_url}"
+        echo "    ❌ Failed to download settings template from ${settings_template_url}"
+        return 1
+    fi
+    
+    # Download and customize workspace file template
+    if curl -sSL --fail "$workspace_template_url" -o "$workspace_file" 2>/dev/null; then
+        # Apply template substitutions using exported string variables
+        sed -i '' \
+            -e "s/<PROJECTTYPE>/$PRIMARY_PROJECT_TYPE/g" \
+            -e "s/<DIRECTORY_NAME>/$DIRECTORY/g" \
+            -e "s/<ADDITIONAL_TYPES>/$ADDITIONAL_PROJECT_TYPES_STR/g" \
+            -e "s/<ALL_TYPES>/$ALL_PROJECT_TYPES_STR/g" \
+            "$workspace_file" 2>/dev/null
+        
+        echo "    ✓ Created .vscode/${DIRECTORY}.code-workspace from template"
+    else
+        echo "    ❌ Failed to download workspace template from ${workspace_template_url}"
         return 1
     fi
 }

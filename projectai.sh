@@ -395,8 +395,8 @@ create_instruction_file() {
     
     # Export variables needed by IDE scripts
     export PRIMARY_PROJECT_TYPE
-    export ADDITIONAL_PROJECT_TYPES
-    export ALL_PROJECT_TYPES
+    export ADDITIONAL_PROJECT_TYPES_STR="${ADDITIONAL_PROJECT_TYPES[*]}"
+    export ALL_PROJECT_TYPES_STR="${ALL_PROJECT_TYPES[*]}"
     export FULL_PATH
     export DIRECTORY
     export BASE_URL
