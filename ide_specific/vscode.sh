@@ -22,6 +22,9 @@ ide_setup() {
     # Configure VS Code workspace settings
     configure_vscode_workspace "${FULL_PATH}"
     
+    # Create VS Code-specific symlinks for Agent OS integration
+    create_vscode_symlinks "${FULL_PATH}"
+    
     return 0
 }
 
@@ -85,7 +88,7 @@ configure_vscode_workspace() {
     # Create .vscode directory if it doesn't exist
     mkdir -p "$settings_dir"
     
-    # Try to download template first, fallback to default if not available
+    # Download template and apply substitutions
     if curl -sSL --fail "$template_url" -o "$settings_file" 2>/dev/null; then
         # Apply template substitutions
         sed -i '' \
@@ -95,28 +98,46 @@ configure_vscode_workspace() {
         
         echo "    ✓ Created .vscode/settings.json from template"
     else
-        # Fallback to default settings if template not available
-        cat > "$settings_file" << 'EOF'
-{
-    "github.copilot.enable": true,
-    "github.copilot.advanced": {
-        "referenceFiles": [
-            "reference-docs/**/*.md",
-            "reference-docs/**/*.txt"
-        ]
-    },
-    "agentOS.commands.paths": {
-        "common": "reference-docs/commands/common",
-        "projectSpecific": "reference-docs/commands/project-specific"
-    },
-    "agentOS.prompts.paths": {
-        "common": "reference-docs/prompts/common",
-        "projectSpecific": "reference-docs/prompts/project-specific"
-    }
-}
-EOF
-        echo "    ✓ Created .vscode/settings.json with default settings"
+        echo "    ❌ Failed to download template from ${template_url}"
+        return 1
     fi
+}
+
+# Function to create VS Code-specific symlinks for Agent OS integration
+create_vscode_symlinks() {
+    local project_dir="$1"
+    local github_dir="${project_dir}/.github"
+    local vscode_dirs=("commands" "chatmodes" "prompts")
+    
+    echo "🔗 Creating VS Code-specific symlinks in .github directory..."
+    
+    # Ensure .github directory exists
+    mkdir -p "$github_dir"
+    
+    # Create symlinks for VS Code Agent OS integration
+    for dir in "${vscode_dirs[@]}"; do
+        local source_dir="${project_dir}/reference-docs/${dir}"
+        local target_dir="${github_dir}/${dir}"
+        
+        # Check if source directory exists (should be created by main script)
+        if [ -L "$source_dir" ] && [ -d "$source_dir" ]; then
+            echo "  🔗 Linking .github/${dir} -> reference-docs/${dir}"
+            
+            # Remove existing target if it exists
+            if [ -e "$target_dir" ] || [ -L "$target_dir" ]; then
+                rm -rf "$target_dir"
+            fi
+            
+            # Create symlink
+            if ln -sf "../reference-docs/${dir}" "$target_dir"; then
+                echo "    ✓ Successfully linked .github/${dir}"
+            else
+                echo "    ❌ Failed to link .github/${dir}"
+            fi
+        else
+            echo "  ⚠️  Warning: reference-docs/${dir} not found or not a symlink"
+        fi
+    done
 }
 
 # Function to set up VS Code command integration

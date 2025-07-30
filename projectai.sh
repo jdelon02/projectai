@@ -609,6 +609,11 @@ main() {
         return 1
     fi
     
+    # Create Agent OS symlinks
+    echo "🔗 Setting up Agent OS reference documentation..."
+    create_global_symlinks "$FULL_PATH"
+    create_project_type_symlinks "$FULL_PATH" "${ALL_PROJECT_TYPES[@]}"
+    
     # Execute the copy and replace function for additional templates
     if copy_and_replace; then
         echo "✨ Project initialization complete!"
