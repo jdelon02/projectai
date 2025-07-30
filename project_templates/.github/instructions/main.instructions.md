@@ -38,7 +38,7 @@ Reference chat modes in ../chatmodes/ for different interaction styles.
 
 ## Important Notes
 
-- Primary standards from `~/.agent-os/<PROJECTTYPE>/main.instructions.md` take precedence
+- Primary standards from `../../reference-docs/<PROJECTTYPE>/main.instructions.md` take precedence
 - Additional technology standards provide supplementary guidance
 - Project-specific files in this directory override global defaults
 - Update Agent OS standards as you discover new patterns

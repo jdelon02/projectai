@@ -40,6 +40,7 @@ if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
     echo "Examples:"
     echo "  projectai drupal"
     echo "  projectai drupal php mysql css javascript lando"
+    echo "  projectai drupal,php,mysql,css,javascript,lando"
     echo "  projectai react typescript tailwind"
     echo "  projectai python fastapi postgresql"
     echo ""
@@ -231,8 +232,17 @@ create_project_type_symlinks() {
 
 # Parse input and set variables only if they don't exist
 if [ -z "${PRIMARY_PROJECT_TYPE+x}" ] || [ -z "${ADDITIONAL_PROJECT_TYPES+x}" ]; then
-    # Parse comma-separated input
-    IFS=',' read -r -a ALL_TYPES <<< "$1"
+    # Handle both comma-separated and space-separated arguments
+    ALL_TYPES=()
+    
+    # Check if first argument contains commas (comma-separated format)
+    if [[ "$1" == *","* ]]; then
+        # Parse comma-separated input
+        IFS=',' read -r -a ALL_TYPES <<< "$1"
+    else
+        # Parse space-separated arguments (all command line arguments)
+        ALL_TYPES=("$@")
+    fi
     
     # Set primary type if not set
     if [ -z "${PRIMARY_PROJECT_TYPE+x}" ]; then
