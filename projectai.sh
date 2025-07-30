@@ -516,7 +516,7 @@ create_instruction_file() {
     }
 
     # Set up cleanup for this temp script
-    local cleanup_temp_script() {
+    cleanup_temp_script() {
         if [ -f "$temp_script" ]; then
             echo "  🗑️  Cleaning up temporary IDE script: $temp_script"
             rm -f "$temp_script"
@@ -567,7 +567,7 @@ copy_and_replace() {
     }
     
     # Set up cleanup for this function's temp directory
-    local cleanup_temp_dir() {
+    cleanup_temp_dir() {
         if [ -d "$temp_dir" ]; then
             echo "🗑️  Cleaning up temporary template directory: $temp_dir"
             rm -rf "$temp_dir"
