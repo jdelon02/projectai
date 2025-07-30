@@ -17,8 +17,8 @@
         "github.copilot.advanced": {
             "inlineSuggestCount": 3,
             "referenceFiles": [
-                "reference-docs/**/*.md",
-                "reference-docs/**/*.txt"
+                "${workspaceFolder}/reference-docs/**/*.md",
+                "${workspaceFolder}/reference-docs/**/*.txt"
             ]
         },
         "github.copilot.chat.codeGeneration.useInstructionFiles": true,
