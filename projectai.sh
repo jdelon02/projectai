@@ -11,25 +11,25 @@
 set -e
 
 # Check if we have the required arguments    if [ ! -s "$ide_script" ]; then
-        echo "  ⬇️ Fetching IDE script from GitHub..."
-        temp_script=$(mktemp) || {
-            handle_error "Failed to create temporary file"
-            return 1
-        }
-        
-        # First check if the GitHub URL is accessible
-        if ! curl --output /dev/null --silent --head --fail "$ide_script_url"; {
-            rm -f "$temp_script"
-            handle_error "IDE script not found at $ide_script_url"
-            return 1
-        }
-        
-        # Download the script
-        if ! curl -s --fail -o "$temp_script" "$ide_script_url"; {
-            rm -f "$temp_script"
-            handle_error "Failed to download IDE script from $ide_script_url"
-            return 1
-        }
+    echo "  ⬇️ Fetching IDE script from GitHub..."
+    temp_script=$(mktemp) || {
+        handle_error "Failed to create temporary file"
+        return 1
+    }
+    
+    # First check if the GitHub URL is accessible
+    if ! curl --output /dev/null --silent --head --fail "$ide_script_url"; then
+        rm -f "$temp_script"
+        handle_error "IDE script not found at $ide_script_url"
+        return 1
+    fi
+    
+    # Download the script
+    if ! curl -s --fail -o "$temp_script" "$ide_script_url"; then
+        rm -f "$temp_script"
+        handle_error "Failed to download IDE script from $ide_script_url"
+        return 1
+    fi
     echo "Error: Missing project type argument(s)"
     echo "Usage: projectai <primary_project_type> [additional_project_types...]"
     echo "Example: projectai drupal php mysql css javascript lando"
