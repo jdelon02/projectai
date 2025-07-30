@@ -3,10 +3,47 @@
 # Claude IDE specific instruction file generator
 # This file contains the logic for creating CLAUDE.md instruction files
 
+# Function to backup existing file if it exists
+backup_existing_file() {
+    local file="$1"
+    
+    if [ -f "$file" ]; then
+        local backup_file="${file}.old"
+        echo "    📦 Backing up existing file: $(basename "$file") -> $(basename "$backup_file")"
+        
+        if mv "$file" "$backup_file"; then
+            echo "    ✓ Successfully backed up to $(basename "$backup_file")"
+        else
+            echo "    ❌ Failed to backup $(basename "$file")"
+            return 1
+        fi
+    fi
+    
+    return 0
+}
+
+# Function to update .gitignore for Claude specific files (if needed)
+update_gitignore_for_claude() {
+    local project_dir="$1"
+    local gitignore_file="${project_dir}/.gitignore"
+    
+    # Currently Claude doesn't create symlinks that need to be ignored
+    # This function is here for future extensibility
+    echo "📝 Checking .gitignore for Claude-specific exclusions..."
+    
+    # For now, we don't need to add anything to .gitignore for Claude
+    # The CLAUDE.md file should be committed as it's project-specific configuration
+    echo "  ✓ No additional .gitignore entries needed for Claude"
+    return 0
+}
+
 # Function to generate CLAUDE.md with proper references
 generate_claude_md() {
     local project_dir="$1"
     local claude_file="${project_dir}/CLAUDE.md"
+    
+    # Backup existing file if it exists
+    backup_existing_file "$claude_file"
     
     cat > "$claude_file" << 'EOF'
 # Claude Code Instructions
@@ -89,6 +126,9 @@ setup_ide_environment() {
         echo "⚠️ Warning: Command integration setup incomplete"
     fi
     
+    # Update .gitignore for Claude-specific files
+    update_gitignore_for_claude "$project_dir"
+    
     echo "✅ Claude Code environment setup complete"
     return 0
 
@@ -106,6 +146,9 @@ create_claude_instruction_file() {
     local project_types_display="$1"
     local instruction_file="$FULL_PATH/CLAUDE.md"
     local template_url="${BASE_URL}/project_templates/claude-code/CLAUDE.md"
+
+    # Backup existing file if it exists
+    backup_existing_file "$instruction_file"
 
     if curl -s --fail -o "$instruction_file" "$template_url" 2>/dev/null; then
         if [ -f "$instruction_file" ]; then
@@ -137,6 +180,9 @@ create_claude_instruction_file() {
         fi
     else
         echo "    ⚠️  Failed to download CLAUDE.md template, creating basic version"
+        # Backup existing file if it exists
+        backup_existing_file "$instruction_file"
+        
         # Fallback to a simple version if template download fails
         cat > "$instruction_file" << EOF
 # CLAUDE.md
