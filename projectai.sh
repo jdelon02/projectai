@@ -409,11 +409,27 @@ create_instruction_file() {
     
     echo "  🔧 Running IDE-specific setup for ${IDE_TYPE} in ${FULL_PATH}..."
     
-    # Change to the project directory and execute the IDE script from GitHub
-    (cd "${FULL_PATH}" && if ! curl -sSL "$ide_script_url" | bash; then
+    # Download the script to a temporary file first so we can inspect it
+    local temp_script=$(mktemp)
+    if ! curl -sSL "$ide_script_url" -o "$temp_script"; then
+        rm -f "$temp_script"
+        handle_error "Failed to download IDE script from $ide_script_url"
+        return 1
+    fi
+    
+    # Make it executable
+    chmod +x "$temp_script"
+    
+    # Change to the project directory and execute the IDE script
+    echo "  📜 Executing IDE script from: $ide_script_url"
+    if ! (cd "${FULL_PATH}" && bash -x "$temp_script"); then
+        rm -f "$temp_script"
         handle_error "IDE setup script failed"
         return 1
-    fi)
+    fi
+    
+    # Clean up
+    rm -f "$temp_script"
     
     return 0
 }
@@ -441,22 +457,29 @@ copy_and_replace() {
     }
     trap 'rm -rf "$temp_dir"' EXIT
     
-    # Check GitHub connectivity first
-    if ! check_curl "${BASE_URL}" "GitHub repository"; then
-        handle_error "Cannot connect to GitHub. Please check your internet connection"
-        return 1
-    fi
-    
-    # Dynamically fetch list of directories from GitHub
+    # Use GitHub API to list repository contents
     echo "📂 Fetching template directory structure..."
-    local template_dirs
-    template_dirs=($(curl -s --fail "${BASE_URL}/project_templates/" 2>/dev/null | grep -o 'href="[^"]*/"' | cut -d'"' -f2 | sed 's#/$##')) || {
-        handle_error "Failed to fetch template directory structure"
+    local api_url="https://api.github.com/repos/jdelon02/projectai/contents/project_templates"
+    
+    # Fetch directory listing from GitHub API
+    local file_list
+    file_list=$(curl -sSL -H "Accept: application/vnd.github.v3+json" "$api_url") || {
+        handle_error "Failed to fetch directory listing from GitHub API"
         return 1
     }
     
+    # Parse JSON to get directory names
+    local template_dirs=()
+    while IFS= read -r line; do
+        if [[ $line =~ \"type\":\ *\"dir\" ]]; then
+            if [[ $(echo "$file_list" | grep -B1 "$line") =~ \"name\":\ *\"([^\"]+)\" ]]; then
+                template_dirs+=("${BASH_REMATCH[1]}")
+            fi
+        fi
+    done < <(echo "$file_list")
+    
     if [ ${#template_dirs[@]} -eq 0 ]; then
-        handle_error "No template directories found at ${BASE_URL}/project_templates/"
+        handle_error "No template directories found in project_templates/"
         return 1
     fi
     
@@ -481,23 +504,36 @@ copy_and_replace() {
             continue
         fi
         
-        # Attempt to fetch and process template files
-        if check_curl "${BASE_URL}/project_templates/${template_dir}/" "template directory ${template_dir}"; then
-            local files
-            # Look for markdown and configuration files
-            files=$(curl -s "${BASE_URL}/project_templates/${template_dir}/" 2>/dev/null | grep -o '"[^"]*\.\(md\|json\|yaml\|yml\)"' | tr -d '"') || {
-                echo "  ⚠️  Failed to list files in ${template_dir}, skipping..."
-                ((error_count++))
-                continue
-            }
+        # Get file list for this directory from GitHub API
+        local dir_contents
+        dir_contents=$(curl -sSL -H "Accept: application/vnd.github.v3+json" "$api_url/${template_dir}") || {
+            echo "  ⚠️  Failed to list files in ${template_dir}, skipping..."
+            ((error_count++))
+            continue
+        }
+        
+        # Parse JSON to get file names
+        local files=()
+        while IFS= read -r line; do
+            if [[ $line =~ \"type\":\ *\"file\" ]]; then
+                if [[ $(echo "$dir_contents" | grep -B1 "$line") =~ \"name\":\ *\"([^\"]+)\" ]]; then
+                    filename="${BASH_REMATCH[1]}"
+                    # Only include markdown and config files
+                    if [[ $filename =~ \.(md|json|yaml|yml)$ ]]; then
+                        files+=("$filename")
+                    fi
+                fi
+            fi
+        done < <(echo "$dir_contents")
             
             local file_success=0
-            for template_file in $files; do
+            for template_file in "${files[@]}"; do
                 local target_file="$template_file"
                 local target_path="${target_dir}/${target_file}"
+                local raw_url="${BASE_URL}/project_templates/${template_dir}/${template_file}"
                 
                 echo "  ⬇️  Downloading ${template_file}..."
-                if curl -s --fail -o "$target_path" "${BASE_URL}/project_templates/${template_dir}/${template_file}" 2>/dev/null; then
+                if curl -sSL --fail -o "$target_path" "$raw_url"; then
                     if [ -f "$target_path" ]; then
                         # Create replacement strings for multiple project types
                         local additional_types_str="${ADDITIONAL_PROJECT_TYPES[*]}"
