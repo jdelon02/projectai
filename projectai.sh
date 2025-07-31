@@ -749,6 +749,23 @@ copy_and_replace() {
     [ $success_count -gt 0 ]
 }
 
+# Step: Copy PRD template and rename for this project
+copy_prd_template() {
+    local src_file="$SCRIPT_DIR/project_templates/.github/instructions/PRD_Template.md"
+    local dest_dir="$FULL_PATH/.github/instructions"
+    local dest_file="${dest_dir}/${DIRECTORY}_prd.md"
+    
+    # Ensure destination directory exists
+    mkdir -p "$dest_dir"
+    
+    if [ -f "$src_file" ]; then
+        cp "$src_file" "$dest_file"
+        echo "✓ PRD template copied to $dest_file"
+    else
+        echo "⚠️  PRD template not found at $src_file"
+    fi
+}
+
 # Main script logic
 main() {
     echo "🚀 Project AI initialization..."
@@ -787,6 +804,9 @@ main() {
         handle_error "Failed to create instruction file"
         return 1
     fi
+    
+    # Copy PRD template for this project
+    copy_prd_template
     
     # Execute the copy and replace function for additional templates
     if copy_and_replace; then
