@@ -751,18 +751,18 @@ copy_and_replace() {
 
 # Step: Copy PRD template and rename for this project
 copy_prd_template() {
-    local src_file="$SCRIPT_DIR/project_templates/.github/instructions/PRD_Template.md"
+    local raw_url="${BASE_URL}/project_templates/.github/instructions/PRD_Template.md"
     local dest_dir="$FULL_PATH/.github/instructions"
     local dest_file="${dest_dir}/${DIRECTORY}_prd.md"
-    
+
     # Ensure destination directory exists
     mkdir -p "$dest_dir"
-    
-    if [ -f "$src_file" ]; then
-        cp "$src_file" "$dest_file"
+
+    echo "⬇️  Downloading PRD template from $raw_url"
+    if curl -sSL --fail -o "$dest_file" "$raw_url"; then
         echo "✓ PRD template copied to $dest_file"
     else
-        echo "⚠️  PRD template not found at $src_file"
+        echo "⚠️  Failed to download PRD template from $raw_url"
     fi
 }
 
