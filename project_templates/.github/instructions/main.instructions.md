@@ -183,9 +183,10 @@ When working on the provided project:
 
 ## Important Notes
 
-- Primary standards from `../../reference-docs/<PROJECTTYPE>/main.instructions.md` take precedence when building <PROJECTTYPE> features
+- Primary standards from `@/reference-docs/<PROJECTTYPE>/main.instructions.md` take precedence when building <PROJECTTYPE> features
 - Additional technology standards provide supplementary guidance
 - Project-specific files in this directory override global defaults
 - Update Agent OS standards as you discover new patterns
 - Always use memory-keeper to track progress and save architectural decisions
 - Create checkpoints before context limits
+- Follow instructions in @reference-docs/instructions/main.instructions.md for overall workflow and make sure to follow all steps.
