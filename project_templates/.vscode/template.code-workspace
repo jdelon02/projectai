@@ -30,12 +30,12 @@
         "github.copilot.chat.welcomeMessage": "I have access to your Agent OS standards and <PROJECTTYPE> project configuration. I can help with code generation, testing, and reviews following your established patterns.",
         "github.copilot.chat.testGeneration.instructions": [
             {
-                "text": "Use testing conventions appropriate for <PROJECTTYPE> project with additional technologies: <ADDITIONAL_TYPES>. Follow Agent OS standards from ~/.agent-os/<PROJECTTYPE>/ for primary testing approaches."
+                "text": "Use testing conventions appropriate for <PROJECTTYPE> project with additional technologies: <ADDITIONAL_TYPES>. Follow Agent OS standards from ${workspaceFolder}/reference-docs/<PROJECTTYPE>/ for primary testing approaches."
             }
         ],
         "github.copilot.chat.reviewSelection.instructions": [
             {
-                "text": "Ensure code follows <PROJECTTYPE> coding standards and best practices. Review against Agent OS standards in ~/.agent-os/<PROJECTTYPE>/ and supplementary standards for: <ADDITIONAL_TYPES>. Check for security, performance, and maintainability."
+                "text": "Ensure code follows <PROJECTTYPE> coding standards and best practices. Review against Agent OS standards in ${workspaceFolder}/reference-docs/<PROJECTTYPE>/ and supplementary standards for: <ADDITIONAL_TYPES>. Check for security, performance, and maintainability."
             }
         ],
         "files.watcherExclude": {

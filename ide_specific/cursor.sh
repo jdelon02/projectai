@@ -37,48 +37,34 @@ update_gitignore_for_cursor() {
     return 0
 }
 
-# Function to generate .cursorrules with proper configurations
-generate_cursor_rules() {
+# Function to create .cursorrules symlink to main instructions
+create_cursor_symlink() {
     local project_dir="$1"
     local cursor_file="${project_dir}/.cursorrules"
+    local target_file="${project_dir}/.github/instructions/main.instructions.md"
     
-    # Backup existing file if it exists
-    backup_existing_file "$cursor_file"
+    # Check if target file exists
+    if [ ! -f "$target_file" ]; then
+        echo "❌ Error: Target instructions file not found: $target_file"
+        return 1
+    fi
     
-    cat > "$cursor_file" << 'EOF'
-{
-    "prompts": {
-        "source": "./reference-docs/prompts",
-        "common": {
-            "path": "./reference-docs/prompts/common",
-            "description": "Common development workflow prompts and templates"
-        },
-        "projectSpecific": {
-            "path": "./reference-docs/prompts/project-specific",
-            "description": "Project type-specific prompts and templates"
-        }
-    },
-    "commands": {
-        "source": "./reference-docs/commands",
-        "common": {
-            "path": "./reference-docs/commands/common",
-            "description": "Common development workflow commands"
-        },
-        "projectSpecific": {
-            "path": "./reference-docs/commands/project-specific",
-            "description": "Project type-specific commands and tools"
-        }
-    },
-    "standards": "./reference-docs/standards",
-    "instructions": "./reference-docs/instructions",
-    "chatmodes": "./reference-docs/chatmodes",
-    "maintenance": {
-        "sourceTruth": "reference-docs",
-        "relativePathsOnly": true,
-        "updateTriggers": ["newCommand", "newPrompt"]
-    }
-}
-EOF
+    # Backup existing .cursorrules if it exists and is not already a symlink
+    if [ -f "$cursor_file" ] && [ ! -L "$cursor_file" ]; then
+        backup_existing_file "$cursor_file"
+    elif [ -L "$cursor_file" ]; then
+        echo "    🔗 Removing existing symlink: .cursorrules"
+        rm -f "$cursor_file"
+    fi
+    
+    # Create symlink
+    if ln -sf ".github/instructions/main.instructions.md" "$cursor_file"; then
+        echo "    ✅ Created .cursorrules symlink -> .github/instructions/main.instructions.md"
+        return 0
+    else
+        echo "    ❌ Failed to create .cursorrules symlink"
+        return 1
+    fi
 }
 
 # Function to set up Cursor command and prompt integration
@@ -111,9 +97,9 @@ setup_ide_environment() {
     
     echo "🔧 Setting up Cursor IDE environment..."
     
-    # Generate .cursorrules with proper configurations
-    if ! generate_cursor_rules "$project_dir"; then
-        echo "❌ Error: Failed to generate .cursorrules"
+    # Create .cursorrules symlink to main instructions
+    if ! create_cursor_symlink "$project_dir"; then
+        echo "❌ Error: Failed to create .cursorrules symlink"
         return 1
     fi
     
@@ -126,77 +112,5 @@ setup_ide_environment() {
     update_gitignore_for_cursor "$project_dir"
     
     echo "✅ Cursor IDE environment setup complete"
-    return 0
-    
-    # Report success
-    echo "✓ Cursor IDE setup completed successfully"
-    return 0
-}
-
-create_cursor_instruction_file() {
-    local project_types_display="$1"
-    local instruction_file="$FULL_PATH/.cursorrules"
-    local template_url="${BASE_URL}/project_templates/cursor-ide/.cursorrules"
-
-    # Backup existing file if it exists
-    backup_existing_file "$instruction_file"
-
-    if curl -s --fail -o "$instruction_file" "$template_url" 2>/dev/null; then
-        if [ -f "$instruction_file" ]; then
-local additional_sections=""
-            for project_type in "${ADDITIONAL_PROJECT_TYPES[@]}"; do
-                additional_sections+="## Additional Standards ($project_type)"$'
-'
-                additional_sections+="- Instructions: ~/.agent-os/$project_type/main.instructions.md"$'
-'
-                additional_sections+="- Tech Stack: ~/.agent-os/$project_type/tech-stack.md"$'
-'
-                additional_sections+="- Code Style: ~/.agent-os/$project_type/code-style.md"$'
-'
-                additional_sections+="- Best Practices: ~/.agent-os/$project_type/best-practices.md"$'
-'$'
-'
-            done
-
-            # Create replacement strings
-            local additional_types_str="${ADDITIONAL_PROJECT_TYPES[*]}"
-            local all_types_str="${ALL_PROJECT_TYPES[*]}"
-
-            if sed -i '' 
-                -e "s/<PROJECTTYPE>/$PRIMARY_PROJECT_TYPE/g" 
-                -e "s/<DIRECTORY_NAME>/$DIRECTORY/g" 
-                -e "s/<ADDITIONAL_TYPES>/$additional_types_str/g" 
-                -e "s/<ALL_TYPES>/$all_types_str/g" 
-                -e "s/<ADDITIONAL_SECTIONS>/$additional_sections/g" 
-                "$instruction_file" 2>/dev/null; then
-                echo "    ✓ Created and customized .cursorrules file with ${#ALL_PROJECT_TYPES[@]} project type(s)"
-            else
-                echo "    ⚠️  Created .cursorrules but failed to customize placeholders"
-            fi
-        fi
-    else
-        echo "    ⚠️  Failed to download .cursorrules template, creating basic version"
-        # Backup existing file if it exists
-        backup_existing_file "$instruction_file"
-        
-        # Fallback to a simple version if template download fails
-        cat > "$instruction_file" << EOF
-
-EOF
-    
-    # Add references for additional project types
-    for project_type in "${ADDITIONAL_PROJECT_TYPES[@]}"; do
-        cat >> "$instruction_file" << EOF
-# Cursor IDE Rules - Agent OS Project
-
-You are working on a $PRIMARY_PROJECT_TYPE project using Agent OS structured development methodology.
-
-Main Instructions: ~/.agent-os/$PRIMARY_PROJECT_TYPE/main.instructions.md"
-EOF
-    fi
-    
-    return 0
-    
-    echo "    ✓ Created .cursorrules file with ${#ALL_PROJECT_TYPES[@]} project type(s)"
     return 0
 }

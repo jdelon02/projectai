@@ -179,28 +179,28 @@ create_vscode_symlinks() {
     # Ensure .github directory exists
     mkdir -p "$github_dir"
     
-    # Create symlinks for VS Code Agent OS integration
+    # Create direct symlinks to Agent OS directories
     for dir in "${vscode_dirs[@]}"; do
-        local source_dir="${project_dir}/reference-docs/${dir}"
+        local source_dir="${HOME}/.agent-os/${dir}"
         local target_dir="${github_dir}/${dir}"
         
-        # Check if source directory exists (should be created by main script)
-        if [ -L "$source_dir" ] && [ -d "$source_dir" ]; then
-            echo "  🔗 Linking .github/${dir} -> reference-docs/${dir}"
+        # Check if source directory exists in Agent OS
+        if [ -d "$source_dir" ]; then
+            echo "  🔗 Linking .github/${dir} -> ~/.agent-os/${dir}"
             
             # Remove existing target if it exists
             if [ -e "$target_dir" ] || [ -L "$target_dir" ]; then
                 rm -rf "$target_dir"
             fi
             
-            # Create symlink
-            if ln -sf "../reference-docs/${dir}" "$target_dir"; then
+            # Create direct symlink to Agent OS directory
+            if ln -sf "$source_dir" "$target_dir"; then
                 echo "    ✓ Successfully linked .github/${dir}"
             else
                 echo "    ❌ Failed to link .github/${dir}"
             fi
         else
-            echo "  ⚠️  Warning: reference-docs/${dir} not found or not a symlink"
+            echo "  ⚠️  Warning: ~/.agent-os/${dir} not found"
         fi
     done
 }
